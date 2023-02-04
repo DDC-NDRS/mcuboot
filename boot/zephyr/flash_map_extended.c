@@ -128,10 +128,9 @@ int flash_area_sector_from_off(off_t off, struct flash_sector *sector)
     return rc;
 }
 
-uint8_t flash_area_get_device_id(const struct flash_area *fa)
-{
-	(void)fa;
-	return FLASH_DEVICE_ID;
+uint8_t flash_area_get_device_id(const struct flash_area* fa) {
+    (void) fa;
+    return (FLASH_DEVICE_ID);
 }
 
 #define ERASED_VAL 0xff

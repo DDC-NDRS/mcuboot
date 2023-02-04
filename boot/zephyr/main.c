@@ -165,9 +165,8 @@ struct arm_vector_table {
     uint32_t reset;
 };
 
-static void do_boot(struct boot_rsp *rsp)
-{
-    struct arm_vector_table *vt;
+static void do_boot(struct boot_rsp* rsp) {
+    struct arm_vector_table* vt;
 
     /* The beginning of the image is the ARM vector table, containing
      * the initial stack pointer address and the reset vector
@@ -185,9 +184,9 @@ static void do_boot(struct boot_rsp *rsp)
     rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
     assert(rc == 0);
 
-    vt = (struct arm_vector_table *)(flash_base +
-                                     rsp->br_image_off +
-                                     rsp->br_hdr->ih_hdr_size);
+    vt = (struct arm_vector_table*)(flash_base        +
+                                    rsp->br_image_off +
+                                    rsp->br_hdr->ih_hdr_size);
 #endif
 
     sys_clock_disable();
@@ -498,11 +497,12 @@ static bool detect_pin(void)
 }
 #endif
 
-void main(void)
-{
+void main(void) {
     struct boot_rsp rsp;
     int rc;
-    fih_int fih_rc = FIH_FAILURE;
+    fih_int fih_rc;
+
+    fih_rc = FIH_FAILURE;
 
     MCUBOOT_WATCHDOG_FEED();
 
@@ -521,7 +521,7 @@ void main(void)
 
     ZEPHYR_BOOT_LOG_START();
 
-    (void)rc;
+    (void) rc;
 
     mcuboot_status_change(MCUBOOT_STATUS_STARTUP);
 
@@ -605,8 +605,7 @@ void main(void)
         FIH_PANIC;
     }
 
-    BOOT_LOG_INF("Bootloader chainload address offset: 0x%x",
-                 rsp.br_image_off);
+    BOOT_LOG_INF("Bootloader chainload address offset: 0x%x", rsp.br_image_off);
 
 #if defined(MCUBOOT_DIRECT_XIP)
     BOOT_LOG_INF("Jumping to the image slot");
@@ -622,6 +621,7 @@ void main(void)
     mcuboot_status_change(MCUBOOT_STATUS_BOOT_FAILED);
 
     BOOT_LOG_ERR("Never should get here");
-    while (1)
-        ;
+    while (1) {
+        /* pass*/
+    }
 }

@@ -439,9 +439,7 @@ out:
  *
  * @return		FIH_SUCCESS on success; nonzero on failure.
  */
-fih_int
-boot_go(struct boot_rsp *rsp)
-{
+fih_int boot_go(struct boot_rsp* rsp) {
     int rc = -1;
     fih_int fih_rc = FIH_FAILURE;
 
@@ -449,8 +447,9 @@ boot_go(struct boot_rsp *rsp)
     assert(rc == 0);
 
     rc = boot_image_load_header(_fa_p, &_hdr);
-    if (rc != 0)
+    if (rc != 0) {
         goto out;
+    }
 
 #ifdef MCUBOOT_VALIDATE_PRIMARY_SLOT
     FIH_CALL(boot_image_validate, fih_rc, _fa_p, &_hdr);
@@ -467,8 +466,8 @@ boot_go(struct boot_rsp *rsp)
 #endif /* MCUBOOT_VALIDATE_PRIMARY_SLOT */
 
     rsp->br_flash_dev_id = flash_area_get_device_id(_fa_p);
-    rsp->br_image_off = flash_area_get_off(_fa_p);
-    rsp->br_hdr = &_hdr;
+    rsp->br_image_off    = flash_area_get_off(_fa_p);
+    rsp->br_hdr          = &_hdr;
 
 out:
     flash_area_close(_fa_p);
