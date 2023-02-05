@@ -494,7 +494,7 @@ int boot_set_pending_multi(int image_index, int permanent) {
 
     rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY(image_index), &fap);
     if (rc != 0) {
-        return BOOT_EFLASH;
+        return (BOOT_EFLASH);
     }
 
     rc = boot_read_swap_state(fap, &state_secondary_slot);
@@ -503,44 +503,46 @@ int boot_set_pending_multi(int image_index, int permanent) {
     }
 
     switch (state_secondary_slot.magic) {
-    case BOOT_MAGIC_GOOD:
-        /* Swap already scheduled. */
-        break;
+        case BOOT_MAGIC_GOOD :
+            /* Swap already scheduled. */
+            break;
 
-    case BOOT_MAGIC_UNSET:
-        rc = boot_write_magic(fap);
+        case BOOT_MAGIC_UNSET :
+            rc = boot_write_magic(fap);
 
-        if (rc == 0 && permanent) {
-            rc = boot_write_image_ok(fap);
-        }
-
-        if (rc == 0) {
-            if (permanent) {
-                swap_type = BOOT_SWAP_TYPE_PERM;
-            } else {
-                swap_type = BOOT_SWAP_TYPE_TEST;
+            if (rc == 0 && permanent) {
+                rc = boot_write_image_ok(fap);
             }
-            rc = boot_write_swap_info(fap, swap_type, 0);
-        }
 
-        break;
+            if (rc == 0) {
+                if (permanent) {
+                    swap_type = BOOT_SWAP_TYPE_PERM;
+                }
+                else {
+                    swap_type = BOOT_SWAP_TYPE_TEST;
+                }
+                rc = boot_write_swap_info(fap, swap_type, 0);
+            }
+            break;
 
-    case BOOT_MAGIC_BAD:
-        /* The image slot is corrupt.  There is no way to recover, so erase the
-         * slot to allow future upgrades.
-         */
-        flash_area_erase(fap, 0, flash_area_get_size(fap));
-        rc = BOOT_EBADIMAGE;
-        break;
+        case BOOT_MAGIC_BAD :
+            /* The image slot is corrupt.  There is no way to recover, so erase the
+             * slot to allow future upgrades.
+             */
+            flash_area_erase(fap, 0, flash_area_get_size(fap));
+            rc = BOOT_EBADIMAGE;
+            break;
 
-    default:
-        assert(0);
-        rc = BOOT_EBADIMAGE;
+        default :
+            assert(0);
+            rc = BOOT_EBADIMAGE;
+            break;
     }
 
-done:
+done :
     flash_area_close(fap);
-    return rc;
+
+    return (rc);
 }
 
 /**
