@@ -128,13 +128,12 @@ static const struct boot_swap_table boot_swap_tables[] = {
 #define BOOT_SWAP_TABLES_COUNT \
     (sizeof boot_swap_tables / sizeof boot_swap_tables[0])
 
-static int
-boot_magic_decode(const uint8_t *magic)
-{
+static int boot_magic_decode(const uint8_t* magic) {
     if (memcmp(magic, BOOT_IMG_MAGIC, BOOT_MAGIC_SZ) == 0) {
-        return BOOT_MAGIC_GOOD;
+        return (BOOT_MAGIC_GOOD);
     }
-    return BOOT_MAGIC_BAD;
+
+    return (BOOT_MAGIC_BAD);
 }
 
 static int
@@ -146,27 +145,19 @@ boot_flag_decode(uint8_t flag)
     return BOOT_FLAG_SET;
 }
 
-static inline uint32_t
-boot_magic_off(const struct flash_area *fap)
-{
+static inline uint32_t boot_magic_off(const struct flash_area* fap) {
     return flash_area_get_size(fap) - BOOT_MAGIC_SZ;
 }
 
-static inline uint32_t
-boot_image_ok_off(const struct flash_area *fap)
-{
+static inline uint32_t boot_image_ok_off(const struct flash_area* fap) {
     return ALIGN_DOWN(boot_magic_off(fap) - BOOT_MAX_ALIGN, BOOT_MAX_ALIGN);
 }
 
-static inline uint32_t
-boot_copy_done_off(const struct flash_area *fap)
-{
+static inline uint32_t boot_copy_done_off(const struct flash_area* fap) {
     return boot_image_ok_off(fap) - BOOT_MAX_ALIGN;
 }
 
-uint32_t
-boot_swap_info_off(const struct flash_area *fap)
-{
+uint32_t boot_swap_info_off(const struct flash_area* fap) {
     return boot_copy_done_off(fap) - BOOT_MAX_ALIGN;
 }
 
@@ -196,9 +187,9 @@ boot_magic_compatible_check(uint8_t tbl_val, uint8_t val)
     }
 }
 
-bool bootutil_buffer_is_erased(const struct flash_area *area,
-                               const void *buffer, size_t len)
-{
+bool bootutil_buffer_is_erased(const struct flash_area* area,
+                               const void* buffer,
+                               size_t len) {
     size_t i;
     uint8_t *u8b;
     uint8_t erased_val;
@@ -208,7 +199,7 @@ bool bootutil_buffer_is_erased(const struct flash_area *area,
     }
 
     erased_val = flash_area_erased_val(area);
-    for (i = 0, u8b = (uint8_t *)buffer; i < len; i++) {
+    for (i = 0, u8b = (uint8_t*)buffer; i < len; i++) {
         if (u8b[i] != erased_val) {
             return false;
         }
@@ -217,53 +208,52 @@ bool bootutil_buffer_is_erased(const struct flash_area *area,
     return true;
 }
 
-static int
-boot_read_flag(const struct flash_area *fap, uint8_t *flag, uint32_t off)
-{
+static int boot_read_flag(const struct flash_area* fap, uint8_t* flag, uint32_t off) {
     int rc;
 
     rc = flash_area_read(fap, off, flag, sizeof *flag);
     if (rc < 0) {
         return BOOT_EFLASH;
     }
+
     if (bootutil_buffer_is_erased(fap, flag, sizeof *flag)) {
         *flag = BOOT_FLAG_UNSET;
-    } else {
+    }
+    else {
         *flag = boot_flag_decode(*flag);
     }
 
-    return 0;
+    return (0);
 }
 
-static inline int
-boot_read_copy_done(const struct flash_area *fap, uint8_t *copy_done)
-{
+static inline int boot_read_copy_done(const struct flash_area* fap,
+                                      uint8_t* copy_done) {
     return boot_read_flag(fap, copy_done, boot_copy_done_off(fap));
 }
 
 
-int
-boot_read_swap_state(const struct flash_area *fap,
-                     struct boot_swap_state *state)
-{
+int boot_read_swap_state(const struct flash_area* fap,
+                         struct boot_swap_state*  state) {
     uint8_t magic[BOOT_MAGIC_SZ];
     uint32_t off;
     uint8_t swap_info;
     int rc;
 
     off = boot_magic_off(fap);
-    rc = flash_area_read(fap, off, magic, BOOT_MAGIC_SZ);
+    rc  = flash_area_read(fap, off, magic, BOOT_MAGIC_SZ);
     if (rc < 0) {
         return BOOT_EFLASH;
     }
+
     if (bootutil_buffer_is_erased(fap, magic, BOOT_MAGIC_SZ)) {
         state->magic = BOOT_MAGIC_UNSET;
-    } else {
+    }
+    else {
         state->magic = boot_magic_decode(magic);
     }
 
     off = boot_swap_info_off(fap);
-    rc = flash_area_read(fap, off, &swap_info, sizeof swap_info);
+    rc  = flash_area_read(fap, off, &swap_info, sizeof(swap_info));
     if (rc < 0) {
         return BOOT_EFLASH;
     }
@@ -273,7 +263,7 @@ boot_read_swap_state(const struct flash_area *fap,
     state->image_num = BOOT_GET_IMAGE_NUM(swap_info);
 
     if (bootutil_buffer_is_erased(fap, &swap_info, sizeof swap_info) ||
-            state->swap_type > BOOT_SWAP_TYPE_REVERT) {
+        (state->swap_type > BOOT_SWAP_TYPE_REVERT)) {
         state->swap_type = BOOT_SWAP_TYPE_NONE;
         state->image_num = 0;
     }
@@ -286,10 +276,8 @@ boot_read_swap_state(const struct flash_area *fap,
     return boot_read_image_ok(fap, &state->image_ok);
 }
 
-int
-boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state)
-{
-    const struct flash_area *fap;
+int boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state* state) {
+    const struct flash_area* fap;
     int rc;
 
     rc = flash_area_open(flash_area_id, &fap);
@@ -297,14 +285,12 @@ boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state)
         return BOOT_EFLASH;
     }
 
-    rc = boot_read_swap_state(fap, state);
+    rc = boot_read_swap_state(fap, state);                      // MCUBOOT_SEQ07
     flash_area_close(fap);
     return rc;
 }
 
-int
-boot_write_magic(const struct flash_area *fap)
-{
+int boot_write_magic(const struct flash_area* fap) {
     uint32_t off;
     uint32_t pad_off;
     int rc;
@@ -344,10 +330,7 @@ boot_write_magic(const struct flash_area *fap)
  *
  * @returns 0 on success, != 0 on error.
  */
-int
-boot_write_trailer(const struct flash_area *fap, uint32_t off,
-        const uint8_t *inbuf, uint8_t inlen)
-{
+int boot_write_trailer(const struct flash_area* fap, uint32_t off, const uint8_t* inbuf, uint8_t inlen) {
     uint8_t buf[BOOT_MAX_ALIGN];
     uint8_t erased_val;
     uint32_t align;
@@ -368,7 +351,7 @@ boot_write_trailer(const struct flash_area *fap, uint32_t off,
         return BOOT_EFLASH;
     }
 
-    return 0;
+    return (0);
 }
 
 int
@@ -379,9 +362,7 @@ boot_write_trailer_flag(const struct flash_area *fap, uint32_t off,
     return boot_write_trailer(fap, off, buf, 1);
 }
 
-int
-boot_write_image_ok(const struct flash_area *fap)
-{
+int boot_write_image_ok(const struct flash_area* fap) {
     uint32_t off;
 
     off = boot_image_ok_off(fap);
@@ -391,9 +372,7 @@ boot_write_image_ok(const struct flash_area *fap)
     return boot_write_trailer_flag(fap, off, BOOT_FLAG_SET);
 }
 
-int
-boot_read_image_ok(const struct flash_area *fap, uint8_t *image_ok)
-{
+int boot_read_image_ok(const struct flash_area* fap, uint8_t* image_ok) {
     return boot_read_flag(fap, image_ok, boot_image_ok_off(fap));
 }
 
@@ -430,38 +409,36 @@ boot_swap_type_multi(int image_index)
 
     rc = BOOT_HOOK_CALL(boot_read_swap_state_primary_slot_hook,
                         BOOT_HOOK_REGULAR, image_index, &primary_slot);
-    if (rc == BOOT_HOOK_REGULAR)
-    {
-        rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_PRIMARY(image_index),
-                                        &primary_slot);
+    if (rc == BOOT_HOOK_REGULAR) {
+        rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_PRIMARY(image_index), &primary_slot);
     }
+
     if (rc) {
         return BOOT_SWAP_TYPE_PANIC;
     }
 
-    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SECONDARY(image_index),
-                                    &secondary_slot);
+    // MCUBOOT_SEQ06
+    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SECONDARY(image_index), &secondary_slot);
     if (rc == BOOT_EFLASH) {
         BOOT_LOG_INF("Secondary image of image pair (%d.) "
                      "is unreachable. Treat it as empty", image_index);
-        secondary_slot.magic = BOOT_MAGIC_UNSET;
+        secondary_slot.magic     = BOOT_MAGIC_UNSET;
         secondary_slot.swap_type = BOOT_SWAP_TYPE_NONE;
         secondary_slot.copy_done = BOOT_FLAG_UNSET;
-        secondary_slot.image_ok = BOOT_FLAG_UNSET;
+        secondary_slot.image_ok  = BOOT_FLAG_UNSET;
         secondary_slot.image_num = 0;
-    } else if (rc) {
+    }
+    else if (rc) {
         return BOOT_SWAP_TYPE_PANIC;
     }
 
     for (i = 0; i < BOOT_SWAP_TABLES_COUNT; i++) {
         table = boot_swap_tables + i;
 
-        if (boot_magic_compatible_check(table->magic_primary_slot,
-                                        primary_slot.magic) &&
-            boot_magic_compatible_check(table->magic_secondary_slot,
-                                        secondary_slot.magic) &&
+        if (boot_magic_compatible_check(table->magic_primary_slot, primary_slot.magic)     &&
+            boot_magic_compatible_check(table->magic_secondary_slot, secondary_slot.magic) &&
             (table->image_ok_primary_slot == BOOT_FLAG_ANY   ||
-                table->image_ok_primary_slot == primary_slot.image_ok) &&
+                table->image_ok_primary_slot == primary_slot.image_ok)     &&
             (table->image_ok_secondary_slot == BOOT_FLAG_ANY ||
                 table->image_ok_secondary_slot == secondary_slot.image_ok) &&
             (table->copy_done_primary_slot == BOOT_FLAG_ANY  ||
@@ -471,11 +448,12 @@ boot_swap_type_multi(int image_index)
                          table->swap_type == BOOT_SWAP_TYPE_PERM   ? "perm"   :
                          table->swap_type == BOOT_SWAP_TYPE_REVERT ? "revert" :
                          "BUG; can't happen");
-            if (table->swap_type != BOOT_SWAP_TYPE_TEST &&
-                    table->swap_type != BOOT_SWAP_TYPE_PERM &&
-                    table->swap_type != BOOT_SWAP_TYPE_REVERT) {
+            if ((table->swap_type != BOOT_SWAP_TYPE_TEST) &&
+                (table->swap_type != BOOT_SWAP_TYPE_PERM) &&
+                (table->swap_type != BOOT_SWAP_TYPE_REVERT)) {
                 return BOOT_SWAP_TYPE_PANIC;
             }
+
             return table->swap_type;
         }
     }
@@ -508,10 +486,8 @@ boot_swap_type(void)
  *
  * @return                  0 on success; nonzero on failure.
  */
-int
-boot_set_pending_multi(int image_index, int permanent)
-{
-    const struct flash_area *fap;
+int boot_set_pending_multi(int image_index, int permanent) {
+    const struct flash_area* fap;
     struct boot_swap_state state_secondary_slot;
     uint8_t swap_type;
     int rc;
@@ -580,9 +556,7 @@ done:
  *
  * @return                  0 on success; nonzero on failure.
  */
-int
-boot_set_pending(int permanent)
-{
+int boot_set_pending(int permanent) {
     return boot_set_pending_multi(0, permanent);
 }
 

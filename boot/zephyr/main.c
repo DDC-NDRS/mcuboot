@@ -584,7 +584,7 @@ void main(void) {
     uint32_t start = k_uptime_get_32();
 #endif
 
-    FIH_CALL(boot_go, fih_rc, &rsp);
+    FIH_CALL(boot_go, fih_rc, &rsp);        // MCUBOOT_SEQ00
 
 #ifdef CONFIG_BOOT_SERIAL_WAIT_FOR_DFU
     timeout_in_ms -= (k_uptime_get_32() - start);
