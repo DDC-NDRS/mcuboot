@@ -32,13 +32,13 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 static const struct device *flash_dev = DEVICE_DT_GET(FLASH_DEVICE_NODE);
 
-int flash_device_base(uint8_t fd_id, uintptr_t *ret)
-{
+int flash_device_base(uint8_t fd_id, uintptr_t* ret) {
     if (fd_id != FLASH_DEVICE_ID) {
         BOOT_LOG_ERR("invalid flash ID %d; expected %d",
                      fd_id, FLASH_DEVICE_ID);
         return -EINVAL;
     }
+
     *ret = FLASH_DEVICE_BASE;
     return 0;
 }
