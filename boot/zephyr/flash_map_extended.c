@@ -32,13 +32,13 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 static const struct device *flash_dev = DEVICE_DT_GET(FLASH_DEVICE_NODE);
 
-int flash_device_base(uint8_t fd_id, uintptr_t *ret)
-{
+int flash_device_base(uint8_t fd_id, uintptr_t* ret) {
     if (fd_id != FLASH_DEVICE_ID) {
         BOOT_LOG_ERR("invalid flash ID %d; expected %d",
                      fd_id, FLASH_DEVICE_ID);
         return -EINVAL;
     }
+
     *ret = FLASH_DEVICE_BASE;
     return 0;
 }
@@ -48,43 +48,42 @@ int flash_device_base(uint8_t fd_id, uintptr_t *ret)
  * MCUBoot uses continuous numbering for the primary slot, the secondary slot,
  * and the scratch while zephyr might number it differently.
  */
-int flash_area_id_from_multi_image_slot(int image_index, int slot)
-{
+int flash_area_id_from_multi_image_slot(int image_index, int slot) {
     switch (slot) {
-    case 0: return FLASH_AREA_IMAGE_PRIMARY(image_index);
-#if !defined(CONFIG_SINGLE_APPLICATION_SLOT)
-    case 1: return FLASH_AREA_IMAGE_SECONDARY(image_index);
-#endif
-#if defined(CONFIG_BOOT_SWAP_USING_SCRATCH)
-    case 2: return FLASH_AREA_IMAGE_SCRATCH;
-#endif
+        case 0 : return FLASH_AREA_IMAGE_PRIMARY(image_index);
+
+        #if !defined(CONFIG_SINGLE_APPLICATION_SLOT)
+        case 1 : return FLASH_AREA_IMAGE_SECONDARY(image_index);
+        #endif
+
+        #if defined(CONFIG_BOOT_SWAP_USING_SCRATCH)
+        case 2: return FLASH_AREA_IMAGE_SCRATCH;
+        #endif
     }
 
     return -EINVAL; /* flash_area_open will fail on that */
 }
 
-int flash_area_id_from_image_slot(int slot)
-{
+int flash_area_id_from_image_slot(int slot) {
     return flash_area_id_from_multi_image_slot(0, slot);
 }
 
-int flash_area_id_to_multi_image_slot(int image_index, int area_id)
-{
+int flash_area_id_to_multi_image_slot(int image_index, int area_id) {
     if (area_id == FLASH_AREA_IMAGE_PRIMARY(image_index)) {
         return 0;
     }
-#if !defined(CONFIG_SINGLE_APPLICATION_SLOT)
+
+    #if !defined(CONFIG_SINGLE_APPLICATION_SLOT)
     if (area_id == FLASH_AREA_IMAGE_SECONDARY(image_index)) {
         return 1;
     }
-#endif
+    #endif
 
     BOOT_LOG_ERR("invalid flash area ID");
     return -1;
 }
 
-int flash_area_id_to_image_slot(int area_id)
-{
+int flash_area_id_to_image_slot(int area_id) {
     return flash_area_id_to_multi_image_slot(0, area_id);
 }
 
@@ -128,10 +127,9 @@ int flash_area_sector_from_off(off_t off, struct flash_sector *sector)
     return rc;
 }
 
-uint8_t flash_area_get_device_id(const struct flash_area *fa)
-{
-	(void)fa;
-	return FLASH_DEVICE_ID;
+uint8_t flash_area_get_device_id(const struct flash_area* fa) {
+    (void) fa;
+    return (FLASH_DEVICE_ID);
 }
 
 #define ERASED_VAL 0xff

@@ -167,30 +167,31 @@ boot_status_internal_off(const struct boot_status *bs, int elem_sz)
  * area, and have sizes that are a multiple of each other (powers of two
  * presumably!).
  */
-int
-boot_slots_compatible(struct boot_loader_state *state)
-{
+int boot_slots_compatible(struct boot_loader_state* state) {
     size_t num_sectors_primary;
     size_t num_sectors_secondary;
-    size_t sz0, sz1;
-    size_t primary_slot_sz, secondary_slot_sz;
-#ifndef MCUBOOT_OVERWRITE_ONLY
+    size_t sz0;
+    size_t sz1;
+    size_t primary_slot_sz;
+    size_t secondary_slot_sz;
+    #ifndef MCUBOOT_OVERWRITE_ONLY
     size_t scratch_sz;
-#endif
-    size_t i, j;
+    #endif
+    size_t i;
+    size_t j;
     int8_t smaller;
 
-    num_sectors_primary = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT);
+    num_sectors_primary   = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT);
     num_sectors_secondary = boot_img_num_sectors(state, BOOT_SECONDARY_SLOT);
-    if ((num_sectors_primary > BOOT_MAX_IMG_SECTORS) ||
+    if ((num_sectors_primary   > BOOT_MAX_IMG_SECTORS) ||
         (num_sectors_secondary > BOOT_MAX_IMG_SECTORS)) {
         BOOT_LOG_WRN("Cannot upgrade: more sectors than allowed");
         return 0;
     }
 
-#ifndef MCUBOOT_OVERWRITE_ONLY
+    #ifndef MCUBOOT_OVERWRITE_ONLY
     scratch_sz = boot_scratch_area_size(state);
-#endif
+    #endif
 
     /*
      * The following loop scans all sectors in a linear fashion, assuring that
@@ -199,7 +200,7 @@ boot_slots_compatible(struct boot_loader_state *state)
      * number of a slot's sectors are able to fit into another, which only
      * excludes cases where sector sizes are not a multiple of each other.
      */
-    i = sz0 = primary_slot_sz = 0;
+    i = sz0 = primary_slot_sz   = 0;
     j = sz1 = secondary_slot_sz = 0;
     smaller = 0;
     while (i < num_sectors_primary || j < num_sectors_secondary) {
@@ -208,7 +209,8 @@ boot_slots_compatible(struct boot_loader_state *state)
             sz1 += boot_img_sector_size(state, BOOT_SECONDARY_SLOT, j);
             i++;
             j++;
-        } else if (sz0 < sz1) {
+        }
+        else if (sz0 < sz1) {
             sz0 += boot_img_sector_size(state, BOOT_PRIMARY_SLOT, i);
             /* Guarantee that multiple sectors of the secondary slot
              * fit into the primary slot.
@@ -219,7 +221,8 @@ boot_slots_compatible(struct boot_loader_state *state)
             }
             smaller = 1;
             i++;
-        } else {
+        }
+        else {
             sz1 += boot_img_sector_size(state, BOOT_SECONDARY_SLOT, j);
             /* Guarantee that multiple sectors of the primary slot
              * fit into the secondary slot.
@@ -231,6 +234,7 @@ boot_slots_compatible(struct boot_loader_state *state)
             smaller = 2;
             j++;
         }
+
 #ifndef MCUBOOT_OVERWRITE_ONLY
         if (sz0 == sz1) {
             primary_slot_sz += sz0;
@@ -355,10 +359,8 @@ static const struct boot_status_table boot_status_tables[] = {
  * @return      A BOOT_STATUS_SOURCE_[...] code indicating where status should
  *              be read from.
  */
-int
-swap_status_source(struct boot_loader_state *state)
-{
-    const struct boot_status_table *table;
+int swap_status_source(struct boot_loader_state* state) {
+    const struct boot_status_table* table;
 #if MCUBOOT_SWAP_USING_SCRATCH
     struct boot_swap_state state_scratch;
 #endif

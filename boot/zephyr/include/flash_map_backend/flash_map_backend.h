@@ -70,19 +70,16 @@ int flash_area_id_to_multi_image_slot(int image_index, int area_id);
  */
 int flash_area_sector_from_off(off_t off, struct flash_sector *sector);
 
-static inline uint32_t flash_area_get_off(const struct flash_area *fa)
-{
-	return (uint32_t)fa->fa_off;
+static inline uint32_t flash_area_get_off(const struct flash_area* fa) {
+    return (uint32_t)fa->fa_off;
 }
 
-static inline uint32_t flash_area_get_size(const struct flash_area *fa)
-{
-	return (uint32_t)fa->fa_size;
+static inline uint32_t flash_area_get_size(const struct flash_area* fa) {
+    return (uint32_t)fa->fa_size;
 }
 
-static inline uint8_t flash_area_get_id(const struct flash_area *fa)
-{
-	return fa->fa_id;
+static inline uint8_t flash_area_get_id(const struct flash_area* fa) {
+    return fa->fa_id;
 }
 
 uint8_t flash_area_get_device_id(const struct flash_area *fa);

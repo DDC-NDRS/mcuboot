@@ -61,15 +61,13 @@ int boot_perform_update_hook(int img_index, struct image_header *img_head,
     return BOOT_HOOK_REGULAR;
 }
 
-int boot_read_swap_state_primary_slot_hook(int image_index,
-                                           struct boot_swap_state *state)
-{
+int boot_read_swap_state_primary_slot_hook(int image_index, struct boot_swap_state* state) {
     if (image_index == 1) {
-        state->magic = BOOT_MAGIC_UNSET;
+        state->magic     = BOOT_MAGIC_UNSET;
         state->swap_type = BOOT_SWAP_TYPE_NONE;
         state->image_num = image_index ; // ?
         state->copy_done = BOOT_FLAG_UNSET;
-        state->image_ok = BOOT_FLAG_UNSET;
+        state->image_ok  = BOOT_FLAG_UNSET;
 
         return 0;
     }

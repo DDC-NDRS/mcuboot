@@ -165,9 +165,8 @@ struct arm_vector_table {
     uint32_t reset;
 };
 
-static void do_boot(struct boot_rsp *rsp)
-{
-    struct arm_vector_table *vt;
+static void do_boot(struct boot_rsp* rsp) {
+    struct arm_vector_table* vt;
 
     /* The beginning of the image is the ARM vector table, containing
      * the initial stack pointer address and the reset vector
@@ -185,9 +184,9 @@ static void do_boot(struct boot_rsp *rsp)
     rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
     assert(rc == 0);
 
-    vt = (struct arm_vector_table *)(flash_base +
-                                     rsp->br_image_off +
-                                     rsp->br_hdr->ih_hdr_size);
+    vt = (struct arm_vector_table*)(flash_base        +
+                                    rsp->br_image_off +
+                                    rsp->br_hdr->ih_hdr_size);
 #endif
 
     if (IS_ENABLED(CONFIG_SYSTEM_TIMER_HAS_DISABLE_SUPPORT)) {
@@ -300,9 +299,8 @@ static void do_boot(struct boot_rsp *rsp)
  * lock interrupts and jump there. This is the right thing to do for X86 and
  * possibly other platforms.
  */
-static void do_boot(struct boot_rsp *rsp)
-{
-    void *start;
+static void do_boot(struct boot_rsp* rsp) {
+    void* start;
 
 #if defined(MCUBOOT_RAM_LOAD)
     start = (void *)(rsp->br_hdr->ih_load_addr + rsp->br_hdr->ih_hdr_size);
@@ -313,8 +311,7 @@ static void do_boot(struct boot_rsp *rsp)
     rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
     assert(rc == 0);
 
-    start = (void *)(flash_base + rsp->br_image_off +
-                     rsp->br_hdr->ih_hdr_size);
+    start = (void*)(flash_base + rsp->br_image_off + rsp->br_hdr->ih_hdr_size);
 #endif
 
     /* Lock interrupts and dive into the entry point */
@@ -500,11 +497,12 @@ static bool detect_pin(void)
 }
 #endif
 
-void main(void)
-{
+void main(void) {
     struct boot_rsp rsp;
     int rc;
-    fih_int fih_rc = FIH_FAILURE;
+    fih_int fih_rc;
+
+    fih_rc = FIH_FAILURE;
 
     MCUBOOT_WATCHDOG_FEED();
 
@@ -523,7 +521,7 @@ void main(void)
 
     ZEPHYR_BOOT_LOG_START();
 
-    (void)rc;
+    (void) rc;
 
     mcuboot_status_change(MCUBOOT_STATUS_STARTUP);
 
@@ -588,7 +586,7 @@ void main(void)
     uint32_t start = k_uptime_get_32();
 #endif
 
-    FIH_CALL(boot_go, fih_rc, &rsp);
+    FIH_CALL(boot_go, fih_rc, &rsp);        // MCUBOOT_SEQ00
 
 #ifdef CONFIG_BOOT_SERIAL_WAIT_FOR_DFU
     timeout_in_ms -= (k_uptime_get_32() - start);
@@ -607,8 +605,7 @@ void main(void)
         FIH_PANIC;
     }
 
-    BOOT_LOG_INF("Bootloader chainload address offset: 0x%x",
-                 rsp.br_image_off);
+    BOOT_LOG_INF("Bootloader chainload address offset: 0x%x", rsp.br_image_off);
 
 #if defined(MCUBOOT_DIRECT_XIP)
     BOOT_LOG_INF("Jumping to the image slot");
@@ -624,6 +621,7 @@ void main(void)
     mcuboot_status_change(MCUBOOT_STATUS_BOOT_FAILED);
 
     BOOT_LOG_ERR("Never should get here");
-    while (1)
-        ;
+    while (1) {
+        /* pass*/
+    }
 }
