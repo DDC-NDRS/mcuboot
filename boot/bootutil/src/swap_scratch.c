@@ -166,13 +166,15 @@ uint32_t boot_status_internal_off(const struct boot_status* bs, int elem_sz) {
 int boot_slots_compatible(struct boot_loader_state* state) {
     size_t num_sectors_primary;
     size_t num_sectors_secondary;
-    size_t sz0, sz1;
+    size_t sz0;
+    size_t sz1;
     size_t primary_slot_sz;
     size_t secondary_slot_sz;
     #ifndef MCUBOOT_OVERWRITE_ONLY
     size_t scratch_sz;
     #endif
-    size_t i, j;
+    size_t i;
+    size_t j;
     int8_t smaller;
 
     num_sectors_primary   = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT);

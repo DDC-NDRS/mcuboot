@@ -344,6 +344,7 @@ static int boot_initialize_area(struct boot_loader_state* state, int flash_area)
     if (rc != 0) {
         return (rc);
     }
+
     *out_num_sectors = num_sectors;
 
     return (0);
@@ -961,16 +962,16 @@ int boot_copy_region(struct boot_loader_state* state,
     (void) state;
     #endif
 
-    bytes_copied = 0;
+    bytes_copied = 0UL;
     while (bytes_copied < sz) {
-        if (sz - bytes_copied > sizeof buf) {
+        if ((sz - bytes_copied) > sizeof buf) {
             chunk_sz = sizeof buf;
         }
         else {
-            chunk_sz = sz - bytes_copied;
+            chunk_sz = (sz - bytes_copied);
         }
 
-        rc = flash_area_read(fap_src, off_src + bytes_copied, buf, chunk_sz);
+        rc = flash_area_read(fap_src, (off_src + bytes_copied), buf, chunk_sz);
         if (rc != 0) {
             return (BOOT_EFLASH);
         }
@@ -1038,7 +1039,7 @@ int boot_copy_region(struct boot_loader_state* state,
         }
         #endif
 
-        rc = flash_area_write(fap_dst, off_dst + bytes_copied, buf, chunk_sz);
+        rc = flash_area_write(fap_dst, (off_dst + bytes_copied), buf, chunk_sz);
         if (rc != 0) {
             return (BOOT_EFLASH);
         }
@@ -1755,6 +1756,7 @@ static void boot_prepare_image_for_update(struct boot_loader_state* state,
         if (rc != 0) {
             BOOT_LOG_WRN("Failed reading boot status; Image=%u",
                          BOOT_CURR_IMG(state));
+
             /* Continue with next image if there is one. */
             BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
             return;
@@ -2035,8 +2037,7 @@ fih_ret /**/context_boot_go(struct boot_loader_state* state, struct boot_rsp* rs
         }
 
         #if MCUBOOT_SWAP_USING_SCRATCH
-        rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH,
-                             &BOOT_SCRATCH_AREA(state));
+        rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH, &BOOT_SCRATCH_AREA(state));
         assert(rc == 0);
 
         if (rc != 0) {

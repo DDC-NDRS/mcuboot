@@ -84,11 +84,12 @@ int flash_area_id_to_multi_image_slot(int image_index, int area_id) {
     if (area_id == FLASH_AREA_IMAGE_PRIMARY(image_index)) {
         return 0;
     }
-#if !defined(CONFIG_SINGLE_APPLICATION_SLOT)
+
+    #if !defined(CONFIG_SINGLE_APPLICATION_SLOT)
     if (area_id == FLASH_AREA_IMAGE_SECONDARY(image_index)) {
         return 1;
     }
-#endif
+    #endif
 
     BOOT_LOG_ERR("invalid flash area ID");
     return -1;
@@ -141,8 +142,8 @@ int flash_area_sector_from_off(off_t off, struct flash_sector* sector) {
 }
 
 uint8_t flash_area_get_device_id(const struct flash_area* fa) {
-    (void)fa;
-    return FLASH_DEVICE_ID;
+    (void) fa;
+    return (FLASH_DEVICE_ID);
 }
 
 #define ERASED_VAL 0xff

@@ -75,15 +75,20 @@ static inline fih_ret boot_image_validate_once(const struct flash_area* fa_p,
         if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
             FIH_RET(FIH_FAILURE);
         }
+
         if (state.magic != BOOT_MAGIC_GOOD) {
             rc = boot_write_magic(fa_p);
-            if (rc != 0)
+            if (rc != 0) {
                 FIH_RET(FIH_FAILURE);
+            }
         }
+
         rc = boot_write_image_ok(fa_p);
-        if (rc != 0)
+        if (rc != 0) {
             FIH_RET(FIH_FAILURE);
+        }
     }
+
     FIH_RET(FIH_SUCCESS);
 }
 
@@ -102,8 +107,9 @@ fih_ret boot_go(struct boot_rsp* rsp) {
     assert(rc == 0);
 
     rc = boot_image_load_header(_fa_p, &_hdr);
-    if (rc != 0)
+    if (rc != 0) {
         goto out;
+    }
 
     #ifdef MCUBOOT_VALIDATE_PRIMARY_SLOT
     FIH_CALL(boot_image_validate, fih_rc, _fa_p, &_hdr);

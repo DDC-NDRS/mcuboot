@@ -219,6 +219,7 @@ int boot_read_swap_state(const struct flash_area* fap,
     if (rc < 0) {
         return BOOT_EFLASH;
     }
+
     if (bootutil_buffer_is_erased(fap, magic, BOOT_MAGIC_SZ)) {
         state->magic = BOOT_MAGIC_UNSET;
     }
@@ -227,7 +228,7 @@ int boot_read_swap_state(const struct flash_area* fap,
     }
 
     off = boot_swap_info_off(fap);
-    rc  = flash_area_read(fap, off, &swap_info, sizeof swap_info);
+    rc  = flash_area_read(fap, off, &swap_info, sizeof(swap_info));
     if (rc < 0) {
         return BOOT_EFLASH;
     }
@@ -406,10 +407,8 @@ int boot_swap_type_multi(int image_index) {
     for (i = 0; i < BOOT_SWAP_TABLES_COUNT; i++) {
         table = boot_swap_tables + i;
 
-        if (boot_magic_compatible_check(table->magic_primary_slot,
-                                        primary_slot.magic) &&
-            boot_magic_compatible_check(table->magic_secondary_slot,
-                                        secondary_slot.magic) &&
+        if (boot_magic_compatible_check(table->magic_primary_slot, primary_slot.magic)     &&
+            boot_magic_compatible_check(table->magic_secondary_slot, secondary_slot.magic) &&
             (table->image_ok_primary_slot == BOOT_FLAG_ANY   ||
                 table->image_ok_primary_slot == primary_slot.image_ok) &&
             (table->image_ok_secondary_slot == BOOT_FLAG_ANY ||
@@ -478,7 +477,7 @@ int boot_set_next(const struct flash_area* fa, bool active, bool confirm) {
 
     rc = boot_read_swap_state(fa, &slot_state);
     if (rc != 0) {
-        return rc;
+        return (rc);
     }
 
     switch (slot_state.magic) {
@@ -534,9 +533,10 @@ int boot_set_next(const struct flash_area* fa, bool active, bool confirm) {
             /* Something is not OK, this should never happen */
             assert(0);
             rc = BOOT_EBADIMAGE;
+            break;
     }
 
-    return rc;
+    return (rc);
 }
 #else
 int boot_set_next(const struct flash_area* fa, bool active, bool confirm) {
@@ -553,7 +553,7 @@ int boot_set_next(const struct flash_area* fa, bool active, bool confirm) {
 
     rc = boot_read_swap_state(fa, &slot_state);
     if (rc != 0) {
-        return rc;
+        return (rc);
     }
 
     switch (slot_state.magic) {
@@ -599,7 +599,7 @@ int boot_set_next(const struct flash_area* fa, bool active, bool confirm) {
             rc = BOOT_EBADSTATUS;
     }
 
-    return rc;
+    return (rc);
 }
 #endif
 
@@ -637,7 +637,8 @@ int boot_set_pending_multi(int image_index, int permanent) {
     rc = boot_set_next(fap, false, !(permanent == 0));
 
     flash_area_close(fap);
-    return rc;
+
+    return (rc);
 }
 
 /**
@@ -678,7 +679,8 @@ int boot_set_confirmed_multi(int image_index) {
     rc = boot_set_next(fap, true, true);
 
     flash_area_close(fap);
-    return rc;
+
+    return (rc);
 }
 
 /**
