@@ -37,29 +37,27 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
  * FIXME: this might have to be updated for threaded sim
  */
 int boot_status_fails = 0;
-#define BOOT_STATUS_ASSERT(x)                \
-    do {                                     \
-        if (!(x)) {                          \
-            boot_status_fails++;             \
-        }                                    \
+#define BOOT_STATUS_ASSERT(x)               \
+    do {                                    \
+        if (!(x)) {                         \
+            boot_status_fails++;            \
+        }                                   \
     } while (0)
 #else
 #define BOOT_STATUS_ASSERT(x) ASSERT(x)
 #endif
 
-int
-boot_read_image_header(struct boot_loader_state *state, int slot,
-                       struct image_header *out_hdr, struct boot_status *bs)
-{
-    const struct flash_area *fap;
+int boot_read_image_header(struct boot_loader_state* state, int slot,
+                           struct image_header* out_hdr, struct boot_status* bs) {
+    const struct flash_area* fap;
     int area_id;
     int rc = 0;
 
-    (void)bs;
+    (void) bs;
 
-#if (BOOT_IMAGE_NUMBER == 1)
-    (void)state;
-#endif
+    #if (BOOT_IMAGE_NUMBER == 1)
+    (void) state;
+    #endif
 
     area_id = flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state), slot);
 
@@ -73,7 +71,7 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
         rc = BOOT_EFLASH;
     }
 
-    return rc;
+    return (rc);
 }
 
 #if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
@@ -82,12 +80,10 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
  * to recover in case the boot lodaer was reset in the middle of a swap
  * operation.
  */
-int
-swap_read_status_bytes(const struct flash_area *fap,
-        struct boot_loader_state *state, struct boot_status *bs)
-{
+int swap_read_status_bytes(const struct flash_area* fap,
+                           struct boot_loader_state* state, struct boot_status* bs) {
     uint32_t off;
-    uint8_t status;
+    uint8_t  status;
     int max_entries;
     int found;
     int found_idx;
@@ -101,12 +97,12 @@ swap_read_status_bytes(const struct flash_area *fap,
         return BOOT_EBADARGS;
     }
 
-    found = 0;
+    found     = 0;
     found_idx = 0;
-    invalid = 0;
+    invalid   = 0;
     for (i = 0; i < max_entries; i++) {
         rc = flash_area_read(fap, off + i * BOOT_WRITE_SZ(state),
-                &status, 1);
+                             &status, 1);
         if (rc < 0) {
             return BOOT_EFLASH;
         }
@@ -115,9 +111,11 @@ swap_read_status_bytes(const struct flash_area *fap,
             if (found && !found_idx) {
                 found_idx = i;
             }
-        } else if (!found) {
+        }
+        else if (!found) {
             found = 1;
-        } else if (found_idx) {
+        }
+        else if (found_idx) {
             invalid = 1;
             break;
         }
@@ -127,38 +125,36 @@ swap_read_status_bytes(const struct flash_area *fap,
         /* This means there was an error writing status on the last
          * swap. Tell user and move on to validation!
          */
-#if !defined(__BOOTSIM__)
+        #if !defined(__BOOTSIM__)
         BOOT_LOG_ERR("Detected inconsistent status!");
-#endif
+        #endif
 
-#if !defined(MCUBOOT_VALIDATE_PRIMARY_SLOT)
+        #if !defined(MCUBOOT_VALIDATE_PRIMARY_SLOT)
         /* With validation of the primary slot disabled, there is no way
          * to be sure the swapped primary slot is OK, so abort!
          */
         assert(0);
-#endif
+        #endif
     }
 
     if (found) {
         if (!found_idx) {
             found_idx = i;
         }
-        bs->idx = (found_idx / BOOT_STATUS_STATE_COUNT) + 1;
+        bs->idx   = (found_idx / BOOT_STATUS_STATE_COUNT) + 1;
         bs->state = (found_idx % BOOT_STATUS_STATE_COUNT) + 1;
     }
 
     return 0;
 }
 
-uint32_t
-boot_status_internal_off(const struct boot_status *bs, int elem_sz)
-{
+uint32_t boot_status_internal_off(const struct boot_status* bs, int elem_sz) {
     int idx_sz;
 
-    idx_sz = elem_sz * BOOT_STATUS_STATE_COUNT;
+    idx_sz = (elem_sz * BOOT_STATUS_STATE_COUNT);
 
-    return (bs->idx - BOOT_STATUS_IDX_0) * idx_sz +
-           (bs->state - BOOT_STATUS_STATE_0) * elem_sz;
+    return (((bs->idx   - BOOT_STATUS_IDX_0  ) * idx_sz) +
+            ((bs->state - BOOT_STATUS_STATE_0) * elem_sz));
 }
 
 /*
@@ -167,30 +163,31 @@ boot_status_internal_off(const struct boot_status *bs, int elem_sz)
  * area, and have sizes that are a multiple of each other (powers of two
  * presumably!).
  */
-int
-boot_slots_compatible(struct boot_loader_state *state)
-{
+int boot_slots_compatible(struct boot_loader_state* state) {
     size_t num_sectors_primary;
     size_t num_sectors_secondary;
-    size_t sz0, sz1;
-    size_t primary_slot_sz, secondary_slot_sz;
-#ifndef MCUBOOT_OVERWRITE_ONLY
+    size_t sz0;
+    size_t sz1;
+    size_t primary_slot_sz;
+    size_t secondary_slot_sz;
+    #ifndef MCUBOOT_OVERWRITE_ONLY
     size_t scratch_sz;
-#endif
-    size_t i, j;
+    #endif
+    size_t i;
+    size_t j;
     int8_t smaller;
 
-    num_sectors_primary = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT);
+    num_sectors_primary   = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT);
     num_sectors_secondary = boot_img_num_sectors(state, BOOT_SECONDARY_SLOT);
-    if ((num_sectors_primary > BOOT_MAX_IMG_SECTORS) ||
+    if ((num_sectors_primary   > BOOT_MAX_IMG_SECTORS) ||
         (num_sectors_secondary > BOOT_MAX_IMG_SECTORS)) {
         BOOT_LOG_WRN("Cannot upgrade: more sectors than allowed");
         return 0;
     }
 
-#ifndef MCUBOOT_OVERWRITE_ONLY
+    #ifndef MCUBOOT_OVERWRITE_ONLY
     scratch_sz = boot_scratch_area_size(state);
-#endif
+    #endif
 
     /*
      * The following loop scans all sectors in a linear fashion, assuring that
@@ -202,36 +199,39 @@ boot_slots_compatible(struct boot_loader_state *state)
     i = sz0 = primary_slot_sz = 0;
     j = sz1 = secondary_slot_sz = 0;
     smaller = 0;
-    while (i < num_sectors_primary || j < num_sectors_secondary) {
+    while ((i < num_sectors_primary) || (j < num_sectors_secondary)) {
         if (sz0 == sz1) {
             sz0 += boot_img_sector_size(state, BOOT_PRIMARY_SLOT, i);
             sz1 += boot_img_sector_size(state, BOOT_SECONDARY_SLOT, j);
             i++;
             j++;
-        } else if (sz0 < sz1) {
+        }
+        else if (sz0 < sz1) {
             sz0 += boot_img_sector_size(state, BOOT_PRIMARY_SLOT, i);
             /* Guarantee that multiple sectors of the secondary slot
              * fit into the primary slot.
              */
             if (smaller == 2) {
                 BOOT_LOG_WRN("Cannot upgrade: slots have non-compatible sectors");
-                return 0;
+                return (0);
             }
             smaller = 1;
             i++;
-        } else {
+        }
+        else {
             sz1 += boot_img_sector_size(state, BOOT_SECONDARY_SLOT, j);
             /* Guarantee that multiple sectors of the primary slot
              * fit into the secondary slot.
              */
             if (smaller == 1) {
                 BOOT_LOG_WRN("Cannot upgrade: slots have non-compatible sectors");
-                return 0;
+                return (0);
             }
             smaller = 2;
             j++;
         }
-#ifndef MCUBOOT_OVERWRITE_ONLY
+
+        #ifndef MCUBOOT_OVERWRITE_ONLY
         if (sz0 == sz1) {
             primary_slot_sz += sz0;
             secondary_slot_sz += sz1;
@@ -244,10 +244,10 @@ boot_slots_compatible(struct boot_loader_state *state)
             }
             smaller = sz0 = sz1 = 0;
         }
-#endif
+        #endif
     }
 
-    if ((i != num_sectors_primary) ||
+    if ((i != num_sectors_primary)   ||
         (j != num_sectors_secondary) ||
         (primary_slot_sz != secondary_slot_sz)) {
         BOOT_LOG_WRN("Cannot upgrade: slots are not compatible");
@@ -261,7 +261,7 @@ boot_slots_compatible(struct boot_loader_state *state)
     BOOT_LOG_INF("%s: magic=%s, swap_type=0x%x, copy_done=0x%x, "   \
                  "image_ok=0x%x",                                   \
                  (area),                                            \
-                 ((state)->magic == BOOT_MAGIC_GOOD ? "good" :      \
+                 ((state)->magic == BOOT_MAGIC_GOOD  ? "good"  :    \
                   (state)->magic == BOOT_MAGIC_UNSET ? "unset" :    \
                   "bad"),                                           \
                  (state)->swap_type,                                \
@@ -289,10 +289,10 @@ static const struct boot_status_table boot_status_tables[] = {
          * source: none                            |
          * ----------------------------------------'
          */
-        .bst_magic_primary_slot =     BOOT_MAGIC_GOOD,
-        .bst_magic_scratch =          BOOT_MAGIC_NOTGOOD,
+        .bst_magic_primary_slot     = BOOT_MAGIC_GOOD,
+        .bst_magic_scratch          = BOOT_MAGIC_NOTGOOD,
         .bst_copy_done_primary_slot = BOOT_FLAG_SET,
-        .bst_status_source =          BOOT_STATUS_SOURCE_NONE,
+        .bst_status_source          = BOOT_STATUS_SOURCE_NONE,
     },
 
     {
@@ -304,10 +304,10 @@ static const struct boot_status_table boot_status_tables[] = {
          * source: primary slot                    |
          * ----------------------------------------'
          */
-        .bst_magic_primary_slot =     BOOT_MAGIC_GOOD,
-        .bst_magic_scratch =          BOOT_MAGIC_NOTGOOD,
+        .bst_magic_primary_slot     = BOOT_MAGIC_GOOD,
+        .bst_magic_scratch          = BOOT_MAGIC_NOTGOOD,
         .bst_copy_done_primary_slot = BOOT_FLAG_UNSET,
-        .bst_status_source =          BOOT_STATUS_SOURCE_PRIMARY_SLOT,
+        .bst_status_source          = BOOT_STATUS_SOURCE_PRIMARY_SLOT,
     },
 
     {
@@ -319,11 +319,12 @@ static const struct boot_status_table boot_status_tables[] = {
          * source: scratch                         |
          * ----------------------------------------'
          */
-        .bst_magic_primary_slot =     BOOT_MAGIC_ANY,
-        .bst_magic_scratch =          BOOT_MAGIC_GOOD,
+        .bst_magic_primary_slot     = BOOT_MAGIC_ANY,
+        .bst_magic_scratch          = BOOT_MAGIC_GOOD,
         .bst_copy_done_primary_slot = BOOT_FLAG_ANY,
-        .bst_status_source =          BOOT_STATUS_SOURCE_SCRATCH,
+        .bst_status_source          = BOOT_STATUS_SOURCE_SCRATCH,
     },
+
     {
         /*           | primary slot | scratch      |
          * ----------+--------------+--------------|
@@ -337,11 +338,11 @@ static const struct boot_status_table boot_status_tables[] = {
          * o Mid-revert; status in primary slot.                              |
          * -------------------------------------------------------------------'
          */
-        .bst_magic_primary_slot =     BOOT_MAGIC_UNSET,
-        .bst_magic_scratch =          BOOT_MAGIC_ANY,
+        .bst_magic_primary_slot     = BOOT_MAGIC_UNSET,
+        .bst_magic_scratch          = BOOT_MAGIC_ANY,
         .bst_copy_done_primary_slot = BOOT_FLAG_UNSET,
-        .bst_status_source =          BOOT_STATUS_SOURCE_PRIMARY_SLOT,
-    },
+        .bst_status_source          = BOOT_STATUS_SOURCE_PRIMARY_SLOT,
+     }
 };
 
 #define BOOT_STATUS_TABLES_COUNT \
@@ -355,26 +356,23 @@ static const struct boot_status_table boot_status_tables[] = {
  * @return      A BOOT_STATUS_SOURCE_[...] code indicating where status should
  *              be read from.
  */
-int
-swap_status_source(struct boot_loader_state *state)
-{
-    const struct boot_status_table *table;
-#if MCUBOOT_SWAP_USING_SCRATCH
+int swap_status_source(struct boot_loader_state* state) {
+    const struct boot_status_table* table;
+    #if MCUBOOT_SWAP_USING_SCRATCH
     struct boot_swap_state state_scratch;
-#endif
+    #endif
     struct boot_swap_state state_primary_slot;
     int rc;
     size_t i;
     uint8_t source;
     uint8_t image_index;
 
-#if (BOOT_IMAGE_NUMBER == 1)
-    (void)state;
-#endif
+    #if (BOOT_IMAGE_NUMBER == 1)
+    (void) state;
+    #endif
 
     image_index = BOOT_CURR_IMG(state);
-    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_PRIMARY(image_index),
-            &state_primary_slot);
+    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_PRIMARY(image_index), &state_primary_slot);
     assert(rc == 0);
 
 #if MCUBOOT_SWAP_USING_SCRATCH
@@ -389,27 +387,24 @@ swap_status_source(struct boot_loader_state *state)
     for (i = 0; i < BOOT_STATUS_TABLES_COUNT; i++) {
         table = &boot_status_tables[i];
 
-        if (boot_magic_compatible_check(table->bst_magic_primary_slot,
-                          state_primary_slot.magic) &&
-#if MCUBOOT_SWAP_USING_SCRATCH
-            boot_magic_compatible_check(table->bst_magic_scratch,
-                          state_scratch.magic) &&
-#endif
-            (table->bst_copy_done_primary_slot == BOOT_FLAG_ANY ||
-             table->bst_copy_done_primary_slot == state_primary_slot.copy_done))
-        {
+        if (boot_magic_compatible_check(table->bst_magic_primary_slot, state_primary_slot.magic) &&
+            #if MCUBOOT_SWAP_USING_SCRATCH
+            boot_magic_compatible_check(table->bst_magic_scratch, state_scratch.magic) &&
+            #endif
+            ((table->bst_copy_done_primary_slot == BOOT_FLAG_ANY) ||
+             (table->bst_copy_done_primary_slot == state_primary_slot.copy_done))) {
             source = table->bst_status_source;
 
-#if (BOOT_IMAGE_NUMBER > 1) && MCUBOOT_SWAP_USING_SCRATCH
+            #if (BOOT_IMAGE_NUMBER > 1) && MCUBOOT_SWAP_USING_SCRATCH
             /* In case of multi-image boot it can happen that if boot status
              * info is found on scratch area then it does not belong to the
              * currently examined image.
              */
-            if (source == BOOT_STATUS_SOURCE_SCRATCH &&
-                state_scratch.image_num != BOOT_CURR_IMG(state)) {
+            if ((source == BOOT_STATUS_SOURCE_SCRATCH) &&
+                (state_scratch.image_num != BOOT_CURR_IMG(state))) {
                 source = BOOT_STATUS_SOURCE_NONE;
             }
-#endif
+            #endif
 
             BOOT_LOG_INF("Boot source: %s",
                          source == BOOT_STATUS_SOURCE_NONE ? "none" :
@@ -438,11 +433,9 @@ swap_status_source(struct boot_loader_state *state)
  * @return                      The number of bytes comprised by the
  *                                  [first-sector, last-sector] range.
  */
-static uint32_t
-boot_copy_sz(const struct boot_loader_state *state, int last_sector_idx,
-             int *out_first_sector_idx)
-{
-    size_t scratch_sz;
+static uint32_t boot_copy_sz(const struct boot_loader_state* state, int last_sector_idx,
+                             int* out_first_sector_idx) {
+    size_t   scratch_sz;
     uint32_t new_sz;
     uint32_t sz;
     int i;
@@ -481,13 +474,11 @@ boot_copy_sz(const struct boot_loader_state *state, int last_sector_idx,
  *
  * @return                      0 on success; nonzero on failure.
  */
-static void
-boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
-        struct boot_status *bs)
-{
-    const struct flash_area *fap_primary_slot;
-    const struct flash_area *fap_secondary_slot;
-    const struct flash_area *fap_scratch;
+static void boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state* state,
+                              struct boot_status* bs) {
+    const struct flash_area* fap_primary_slot;
+    const struct flash_area* fap_secondary_slot;
+    const struct flash_area* fap_scratch;
     uint32_t copy_sz;
     uint32_t trailer_sz;
     uint32_t sector_sz;
@@ -515,7 +506,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
      * controls if special handling is needed (swapping last sector).
      */
     last_sector = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT) - 1;
-    sector_sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, last_sector);
+    sector_sz   = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, last_sector);
 
     if (sector_sz < trailer_sz) {
         uint32_t trailer_sector_sz = sector_sz;
@@ -539,16 +530,14 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
 
     image_index = BOOT_CURR_IMG(state);
 
-    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index),
-            &fap_primary_slot);
-    assert (rc == 0);
+    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index), &fap_primary_slot);
+    assert(rc == 0);
 
-    rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY(image_index),
-            &fap_secondary_slot);
-    assert (rc == 0);
+    rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY(image_index), &fap_secondary_slot);
+    assert(rc == 0);
 
     rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH, &fap_scratch);
-    assert (rc == 0);
+    assert(rc == 0);
 
     if (bs->state == BOOT_STATUS_STATE_0) {
         BOOT_LOG_DBG("erasing scratch area");
@@ -575,8 +564,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
                 assert(rc == 0);
 
                 /* Erase the temporary trailer from the scratch area. */
-                rc = boot_erase_region(fap_scratch, 0,
-                        flash_area_get_size(fap_scratch));
+                rc = boot_erase_region(fap_scratch, 0, flash_area_get_size(fap_scratch));
                 assert(rc == 0);
             }
         }
@@ -627,8 +615,8 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
 
             /* copy current status that is being maintained in scratch */
             rc = boot_copy_region(state, fap_scratch, fap_primary_slot,
-                        scratch_trailer_off, img_off + copy_sz,
-                        (BOOT_STATUS_STATE_COUNT - 1) * BOOT_WRITE_SZ(state));
+                                  scratch_trailer_off, img_off + copy_sz,
+                                  (BOOT_STATUS_STATE_COUNT - 1) * BOOT_WRITE_SZ(state));
             BOOT_STATUS_ASSERT(rc == 0);
 
             rc = boot_read_swap_state(fap_scratch, &swap_state);
@@ -641,20 +629,21 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
 
             if (swap_state.swap_type != BOOT_SWAP_TYPE_NONE) {
                 rc = boot_write_swap_info(fap_primary_slot,
-                        swap_state.swap_type, image_index);
+                                          swap_state.swap_type, image_index);
                 assert(rc == 0);
             }
 
             rc = boot_write_swap_size(fap_primary_slot, bs->swap_size);
             assert(rc == 0);
 
-#ifdef MCUBOOT_ENC_IMAGES
+            #ifdef MCUBOOT_ENC_IMAGES
             rc = boot_write_enc_key(fap_primary_slot, 0, bs);
             assert(rc == 0);
 
             rc = boot_write_enc_key(fap_primary_slot, 1, bs);
             assert(rc == 0);
-#endif
+            #endif
+
             rc = boot_write_magic(fap_primary_slot);
             assert(rc == 0);
         }
@@ -664,7 +653,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
          * reading a stale status from the scratch area in case of immediate
          * reset.
          */
-        erase_scratch = bs->use_scratch;
+        erase_scratch   = bs->use_scratch;
         bs->use_scratch = 0;
 
         rc = boot_write_status(state, bs);
@@ -683,10 +672,8 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
     flash_area_close(fap_scratch);
 }
 
-void
-swap_run(struct boot_loader_state *state, struct boot_status *bs,
-         uint32_t copy_size)
-{
+void swap_run(struct boot_loader_state* state, struct boot_status* bs,
+              uint32_t copy_size) {
     uint32_t sz;
     int first_sector_idx;
     int last_sector_idx;
@@ -694,9 +681,9 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     int last_idx_secondary_slot;
     uint32_t primary_slot_size;
     uint32_t secondary_slot_size;
-    primary_slot_size = 0;
-    secondary_slot_size = 0;
-    last_sector_idx = 0;
+    primary_slot_size       = 0;
+    secondary_slot_size     = 0;
+    last_sector_idx         = 0;
     last_idx_secondary_slot = 0;
 
     BOOT_LOG_INF("Starting swap using scratch algorithm.");
@@ -710,19 +697,21 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     while (1) {
         if ((primary_slot_size < copy_size) ||
             (primary_slot_size < secondary_slot_size)) {
-           primary_slot_size += boot_img_sector_size(state,
-                                                     BOOT_PRIMARY_SLOT,
-                                                     last_sector_idx);
+            primary_slot_size += boot_img_sector_size(state,
+                                                      BOOT_PRIMARY_SLOT,
+                                                      last_sector_idx);
         }
+
         if ((secondary_slot_size < copy_size) ||
             (secondary_slot_size < primary_slot_size)) {
-           secondary_slot_size += boot_img_sector_size(state,
-                                                       BOOT_SECONDARY_SLOT,
-                                                       last_idx_secondary_slot);
+            secondary_slot_size += boot_img_sector_size(state,
+                                                        BOOT_SECONDARY_SLOT,
+                                                        last_idx_secondary_slot);
         }
-        if (primary_slot_size >= copy_size &&
-                secondary_slot_size >= copy_size &&
-                primary_slot_size == secondary_slot_size) {
+
+        if ((primary_slot_size   >= copy_size) &&
+            (secondary_slot_size >= copy_size) &&
+            (primary_slot_size   == secondary_slot_size)) {
             break;
         }
         last_sector_idx++;
@@ -739,28 +728,26 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
         last_sector_idx = first_sector_idx - 1;
         swap_idx++;
     }
-
 }
 #endif /* !MCUBOOT_OVERWRITE_ONLY */
 
-int app_max_size(struct boot_loader_state *state)
-{
+int app_max_size(struct boot_loader_state* state) {
     size_t num_sectors_primary;
     size_t num_sectors_secondary;
     size_t sz0, sz1;
     size_t primary_slot_sz, secondary_slot_sz;
-#ifndef MCUBOOT_OVERWRITE_ONLY
+    #ifndef MCUBOOT_OVERWRITE_ONLY
     size_t scratch_sz;
-#endif
+    #endif
     size_t i, j;
     int8_t smaller;
 
-    num_sectors_primary = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT);
+    num_sectors_primary   = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT);
     num_sectors_secondary = boot_img_num_sectors(state, BOOT_SECONDARY_SLOT);
 
-#ifndef MCUBOOT_OVERWRITE_ONLY
+    #ifndef MCUBOOT_OVERWRITE_ONLY
     scratch_sz = boot_scratch_area_size(state);
-#endif
+    #endif
 
     /*
      * The following loop scans all sectors in a linear fashion, assuring that
@@ -778,7 +765,8 @@ int app_max_size(struct boot_loader_state *state)
             sz1 += boot_img_sector_size(state, BOOT_SECONDARY_SLOT, j);
             i++;
             j++;
-        } else if (sz0 < sz1) {
+        }
+        else if (sz0 < sz1) {
             sz0 += boot_img_sector_size(state, BOOT_PRIMARY_SLOT, i);
             /* Guarantee that multiple sectors of the secondary slot
              * fit into the primary slot.
@@ -789,7 +777,8 @@ int app_max_size(struct boot_loader_state *state)
             }
             smaller = 1;
             i++;
-        } else {
+        }
+        else {
             sz1 += boot_img_sector_size(state, BOOT_SECONDARY_SLOT, j);
             /* Guarantee that multiple sectors of the primary slot
              * fit into the secondary slot.
@@ -801,7 +790,8 @@ int app_max_size(struct boot_loader_state *state)
             smaller = 2;
             j++;
         }
-#ifndef MCUBOOT_OVERWRITE_ONLY
+
+        #ifndef MCUBOOT_OVERWRITE_ONLY
         if (sz0 == sz1) {
             primary_slot_sz += sz0;
             secondary_slot_sz += sz1;
@@ -814,40 +804,41 @@ int app_max_size(struct boot_loader_state *state)
             }
             smaller = sz0 = sz1 = 0;
         }
-#endif
+        #endif
     }
 
-#ifdef MCUBOOT_OVERWRITE_ONLY
+    #ifdef MCUBOOT_OVERWRITE_ONLY
     return (sz1 < sz0 ? sz1 : sz0);
-#else
+    #else
     return (secondary_slot_sz < primary_slot_sz ? secondary_slot_sz : primary_slot_sz);
-#endif
+    #endif
 }
 #else
-int app_max_size(struct boot_loader_state *state)
-{
-    const struct flash_area *fap;
+int app_max_size(struct boot_loader_state* state) {
+    const struct flash_area* fap;
     int fa_id;
     int rc;
     uint32_t active_slot;
-    int primary_sz, secondary_sz;
+    int primary_sz;
+    int secondary_sz;
 
     active_slot = state->slot_usage[BOOT_CURR_IMG(state)].active_slot;
 
     fa_id = flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state), active_slot);
-    rc = flash_area_open(fa_id, &fap);
+    rc    = flash_area_open(fa_id, &fap);
     assert(rc == 0);
     primary_sz = flash_area_get_size(fap);
     flash_area_close(fap);
 
     if (active_slot == BOOT_PRIMARY_SLOT) {
         active_slot = BOOT_SECONDARY_SLOT;
-    } else {
+    }
+    else {
         active_slot = BOOT_PRIMARY_SLOT;
     }
 
     fa_id = flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state), active_slot);
-    rc = flash_area_open(fa_id, &fap);
+    rc    = flash_area_open(fa_id, &fap);
     assert(rc == 0);
     secondary_sz = flash_area_get_size(fap);
     flash_area_close(fap);

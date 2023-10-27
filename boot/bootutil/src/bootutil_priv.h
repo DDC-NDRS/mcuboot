@@ -215,8 +215,8 @@ typedef struct flash_area boot_sector_t;
 struct boot_loader_state {
     struct {
         struct image_header hdr;
-        const struct flash_area *area;
-        boot_sector_t *sectors;
+        const struct flash_area* area;
+        boot_sector_t* sectors;
         uint32_t num_sectors;
     } imgs[BOOT_IMAGE_NUMBER][BOOT_NUM_SLOTS];
 
@@ -373,9 +373,7 @@ static inline bool boot_u16_safe_add(uint16_t *dest, uint16_t a, uint16_t b)
      ((swap_type) == BOOT_SWAP_TYPE_REVERT) || \
      ((swap_type) == BOOT_SWAP_TYPE_PERM))
 
-static inline struct image_header*
-boot_img_hdr(struct boot_loader_state *state, size_t slot)
-{
+static inline struct image_header* boot_img_hdr(struct boot_loader_state* state, size_t slot) {
     return &BOOT_IMG(state, slot).hdr;
 }
 
