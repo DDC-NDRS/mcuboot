@@ -20,8 +20,7 @@
 #include <bootutil/caps.h>
 #include "mcuboot_config/mcuboot_config.h"
 
-uint32_t bootutil_get_caps(void)
-{
+uint32_t bootutil_get_caps(void) {
     uint32_t res = 0;
 
 #if defined(MCUBOOT_SIGN_RSA)
@@ -85,8 +84,7 @@ uint32_t bootutil_get_caps(void)
     return res;
 }
 
-uint32_t bootutil_get_num_images(void)
-{
+uint32_t bootutil_get_num_images(void) {
 #if defined(MCUBOOT_IMAGE_NUMBER)
     return MCUBOOT_IMAGE_NUMBER;
 #else
