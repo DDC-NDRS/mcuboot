@@ -104,7 +104,7 @@ int swap_read_status_bytes(const struct flash_area* fap,
         rc = flash_area_read(fap, off + i * BOOT_WRITE_SZ(state),
                              &status, 1);
         if (rc < 0) {
-            return BOOT_EFLASH;
+            return (BOOT_EFLASH);
         }
 
         if (bootutil_buffer_is_erased(fap, &status, 1)) {
@@ -145,7 +145,7 @@ int swap_read_status_bytes(const struct flash_area* fap,
         bs->state = (found_idx % BOOT_STATUS_STATE_COUNT) + 1;
     }
 
-    return 0;
+    return (0);
 }
 
 uint32_t boot_status_internal_off(const struct boot_status* bs, int elem_sz) {
@@ -182,7 +182,7 @@ int boot_slots_compatible(struct boot_loader_state* state) {
     if ((num_sectors_primary   > BOOT_MAX_IMG_SECTORS) ||
         (num_sectors_secondary > BOOT_MAX_IMG_SECTORS)) {
         BOOT_LOG_WRN("Cannot upgrade: more sectors than allowed");
-        return 0;
+        return (0);
     }
 
     #ifndef MCUBOOT_OVERWRITE_ONLY
@@ -196,7 +196,7 @@ int boot_slots_compatible(struct boot_loader_state* state) {
      * number of a slot's sectors are able to fit into another, which only
      * excludes cases where sector sizes are not a multiple of each other.
      */
-    i = sz0 = primary_slot_sz = 0;
+    i = sz0 = primary_slot_sz   = 0;
     j = sz1 = secondary_slot_sz = 0;
     smaller = 0;
     while ((i < num_sectors_primary) || (j < num_sectors_secondary)) {
@@ -240,7 +240,7 @@ int boot_slots_compatible(struct boot_loader_state* state) {
              */
             if (sz0 > scratch_sz || sz1 > scratch_sz) {
                 BOOT_LOG_WRN("Cannot upgrade: not all sectors fit inside scratch");
-                return 0;
+                return (0);
             }
             smaller = sz0 = sz1 = 0;
         }
@@ -251,10 +251,10 @@ int boot_slots_compatible(struct boot_loader_state* state) {
         (j != num_sectors_secondary) ||
         (primary_slot_sz != secondary_slot_sz)) {
         BOOT_LOG_WRN("Cannot upgrade: slots are not compatible");
-        return 0;
+        return (0);
     }
 
-    return 1;
+    return (1);
 }
 
 #define BOOT_LOG_SWAP_STATE(area, state)                            \
@@ -263,7 +263,7 @@ int boot_slots_compatible(struct boot_loader_state* state) {
                  (area),                                            \
                  ((state)->magic == BOOT_MAGIC_GOOD  ? "good"  :    \
                   (state)->magic == BOOT_MAGIC_UNSET ? "unset" :    \
-                  "bad"),                                           \
+                                                       "bad"),      \
                  (state)->swap_type,                                \
                  (state)->copy_done,                                \
                  (state)->image_ok)
@@ -279,7 +279,7 @@ struct boot_status_table {
  * This set of tables maps swap state contents to boot status location.
  * When searching for a match, these tables must be iterated in order.
  */
-static const struct boot_status_table boot_status_tables[] = {
+static struct boot_status_table const boot_status_tables[] = {
     {
         /*           | primary slot | scratch      |
          * ----------+--------------+--------------|
@@ -357,7 +357,7 @@ static const struct boot_status_table boot_status_tables[] = {
  *              be read from.
  */
 int swap_status_source(struct boot_loader_state* state) {
-    const struct boot_status_table* table;
+    struct boot_status_table const* table;
     #if MCUBOOT_SWAP_USING_SCRATCH
     struct boot_swap_state state_scratch;
     #endif
@@ -375,15 +375,16 @@ int swap_status_source(struct boot_loader_state* state) {
     rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_PRIMARY(image_index), &state_primary_slot);
     assert(rc == 0);
 
-#if MCUBOOT_SWAP_USING_SCRATCH
+    #if MCUBOOT_SWAP_USING_SCRATCH
     rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SCRATCH, &state_scratch);
     assert(rc == 0);
-#endif
+    #endif
 
     BOOT_LOG_SWAP_STATE("Primary image", &state_primary_slot);
-#if MCUBOOT_SWAP_USING_SCRATCH
+    #if MCUBOOT_SWAP_USING_SCRATCH
     BOOT_LOG_SWAP_STATE("Scratch", &state_scratch);
-#endif
+    #endif
+
     for (i = 0; i < BOOT_STATUS_TABLES_COUNT; i++) {
         table = &boot_status_tables[i];
 
@@ -407,16 +408,17 @@ int swap_status_source(struct boot_loader_state* state) {
             #endif
 
             BOOT_LOG_INF("Boot source: %s",
-                         source == BOOT_STATUS_SOURCE_NONE ? "none" :
-                         source == BOOT_STATUS_SOURCE_SCRATCH ? "scratch" :
-                         source == BOOT_STATUS_SOURCE_PRIMARY_SLOT ?
-                                   "primary slot" : "BUG; can't happen");
-            return source;
+                         source == BOOT_STATUS_SOURCE_NONE         ? "none" :
+                         source == BOOT_STATUS_SOURCE_SCRATCH      ? "scratch" :
+                         source == BOOT_STATUS_SOURCE_PRIMARY_SLOT ? "primary slot" :
+                                                                     "BUG; can't happen");
+            return (source);
         }
     }
 
     BOOT_LOG_INF("Boot source: none");
-    return BOOT_STATUS_SOURCE_NONE;
+
+    return (BOOT_STATUS_SOURCE_NONE);
 }
 
 #ifndef MCUBOOT_OVERWRITE_ONLY
@@ -425,13 +427,13 @@ int swap_status_source(struct boot_loader_state* state) {
  * source sector is specified because images are copied backwards in flash
  * (final index to index number 0).
  *
- * @param last_sector_idx       The index of the last source sector
- *                                  (inclusive).
- * @param out_first_sector_idx  The index of the first source sector
- *                                  (inclusive) gets written here.
+ * @param last_sector_idx The index of the last source sector
+ *                        (inclusive).
+ * @param out_first_sector_idx The index of the first source sector
+ *                             (inclusive) gets written here.
  *
- * @return                      The number of bytes comprised by the
- *                                  [first-sector, last-sector] range.
+ * @return The number of bytes comprised by the
+ *         [first-sector, last-sector] range.
  */
 static uint32_t boot_copy_sz(const struct boot_loader_state* state, int last_sector_idx,
                              int* out_first_sector_idx) {
@@ -459,20 +461,21 @@ static uint32_t boot_copy_sz(const struct boot_loader_state* state, int last_sec
     /* i currently refers to a sector that doesn't fit or it is -1 because all
      * sectors have been processed.  In both cases, exclude sector i.
      */
-    *out_first_sector_idx = i + 1;
-    return sz;
+    *out_first_sector_idx = (i + 1);
+
+    return (sz);
 }
 
 /**
  * Swaps the contents of two flash regions within the two image slots.
  *
- * @param idx                   The index of the first sector in the range of
- *                                  sectors being swapped.
- * @param sz                    The number of bytes to swap.
- * @param bs                    The current boot status.  This struct gets
- *                                  updated according to the outcome.
+ * @param idx The index of the first sector in the range of
+ *            sectors being swapped.
+ * @param sz  The number of bytes to swap.
+ * @param bs  The current boot status.  This struct gets
+ *            updated according to the outcome.
  *
- * @return                      0 on success; nonzero on failure.
+ * @return 0 on success; nonzero on failure.
  */
 static void boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state* state,
                               struct boot_status* bs) {
@@ -681,6 +684,7 @@ void swap_run(struct boot_loader_state* state, struct boot_status* bs,
     int last_idx_secondary_slot;
     uint32_t primary_slot_size;
     uint32_t secondary_slot_size;
+
     primary_slot_size       = 0;
     secondary_slot_size     = 0;
     last_sector_idx         = 0;
@@ -773,7 +777,7 @@ int app_max_size(struct boot_loader_state* state) {
              */
             if (smaller == 2) {
                 BOOT_LOG_WRN("Cannot upgrade: slots have non-compatible sectors");
-                return 0;
+                return (0);
             }
             smaller = 1;
             i++;
@@ -785,7 +789,7 @@ int app_max_size(struct boot_loader_state* state) {
              */
             if (smaller == 1) {
                 BOOT_LOG_WRN("Cannot upgrade: slots have non-compatible sectors");
-                return 0;
+                return (0);
             }
             smaller = 2;
             j++;
@@ -800,7 +804,7 @@ int app_max_size(struct boot_loader_state* state) {
              */
             if (sz0 > scratch_sz || sz1 > scratch_sz) {
                 BOOT_LOG_WRN("Cannot upgrade: not all sectors fit inside scratch");
-                return 0;
+                return (0);
             }
             smaller = sz0 = sz1 = 0;
         }
