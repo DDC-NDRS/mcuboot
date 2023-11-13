@@ -121,10 +121,10 @@ static int boot_read_image_headers(struct boot_loader_state* state, bool require
 /**
  * Saves boot status and shared data for current image.
  *
- * @param  state        Boot loader status information.
- * @param  active_slot  Index of the slot will be loaded for current image.
+ * @param state       Boot loader status information.
+ * @param active_slot Index of the slot will be loaded for current image.
  *
- * @return              0 on success; nonzero on failure.
+ * @return 0 on success; nonzero on failure.
  */
 static int boot_add_shared_data(struct boot_loader_state* state,
                                 uint8_t active_slot) {
@@ -281,8 +281,9 @@ static int boot_read_image_size(struct boot_loader_state* state, int slot, uint3
     *size = off + protect_tlv_size + info.it_tlv_tot;
     rc = 0;
 
-done:
+done :
     flash_area_close(fap);
+
     return (rc);
 }
 #endif /* !MCUBOOT_OVERWRITE_ONLY */
@@ -373,12 +374,12 @@ static int boot_read_sectors(struct boot_loader_state* state) {
         return (BOOT_EFLASH_SEC);
     }
 
-#if MCUBOOT_SWAP_USING_SCRATCH
+    #if MCUBOOT_SWAP_USING_SCRATCH
     rc = boot_initialize_area(state, FLASH_AREA_IMAGE_SCRATCH);
     if (rc != 0) {
-        return BOOT_EFLASH;
+        return (BOOT_EFLASH);
     }
-#endif
+    #endif
 
     BOOT_WRITE_SZ(state) = boot_write_sz(state);
 
@@ -570,11 +571,11 @@ static inline bool boot_data_is_set_to(uint8_t val, void* data, size_t len) {
     uint8_t* p = (uint8_t*)data;
     for (i = 0; i < len; i++) {
         if (val != p[i]) {
-            return false;
+            return (false);
         }
     }
 
-    return true;
+    return (true);
 }
 
 static int boot_check_header_erased(struct boot_loader_state* state, int slot) {
@@ -2718,30 +2719,30 @@ static int boot_copy_image_to_sram(struct boot_loader_state* state, int slot,
  * @param  start_b  Start of the B region.
  * @param  end_b    End of the B region.
  *
- * @return          true if there is overlap; false otherwise.
+ * @return true if there is overlap; false otherwise.
  */
 static bool do_regions_overlap(uint32_t start_a, uint32_t end_a,
                                uint32_t start_b, uint32_t end_b) {
     if (start_b > end_a) {
-        return false;
+        return (false);
     }
     else if (start_b >= start_a) {
-        return true;
+        return (true);
     }
     else if (end_b > start_a) {
-        return true;
+        return (true);
     }
 
-    return false;
+    return (false);
 }
 
 /**
  * Checks if the image we want to load to memory overlap with an already
  * ramloaded image.
  *
- * @param  state    Boot loader status information.
+ * @param state Boot loader status information.
  *
- * @return                    0 if there is no overlap; nonzero otherwise.
+ * @return 0 if there is no overlap; nonzero otherwise.
  */
 static int boot_check_ram_load_overlapping(struct boot_loader_state* state) {
     uint32_t i;
@@ -3259,9 +3260,9 @@ out:
  * Prepares the booting process. This function moves images around in flash as
  * appropriate, and tells you what address to boot from.
  *
- * @param rsp                   On success, indicates how booting should occur.
+ * @param rsp On success, indicates how booting should occur.
  *
- * @return                      FIH_SUCCESS on success; nonzero on failure.
+ * @return FIH_SUCCESS on success; nonzero on failure.
  */
 fih_ret /**/boot_go(struct boot_rsp* rsp) {
     FIH_DECLARE(fih_rc, FIH_FAILURE);
@@ -3277,11 +3278,11 @@ fih_ret /**/boot_go(struct boot_rsp* rsp) {
  * moves images around in flash as appropriate, and tells you what address to
  * boot from.
  *
- * @param rsp                   On success, indicates how booting should occur.
+ * @param rsp On success, indicates how booting should occur.
  *
- * @param image_id              The image ID to prepare the boot process for.
+ * @param image_id The image ID to prepare the boot process for.
  *
- * @return                      FIH_SUCCESS on success; nonzero on failure.
+ * @return FIH_SUCCESS on success; nonzero on failure.
  */
 fih_ret boot_go_for_image_id(struct boot_rsp* rsp, uint32_t image_id) {
     FIH_DECLARE(fih_rc, FIH_FAILURE);
@@ -3290,10 +3291,10 @@ fih_ret boot_go_for_image_id(struct boot_rsp* rsp, uint32_t image_id) {
         FIH_RET(FIH_FAILURE);
     }
 
-#if BOOT_IMAGE_NUMBER > 1
+    #if (BOOT_IMAGE_NUMBER > 1)
     memset(&boot_data.img_mask, 1, BOOT_IMAGE_NUMBER);
     boot_data.img_mask[image_id] = 0;
-#endif
+    #endif
 
     FIH_CALL(context_boot_go, fih_rc, &boot_data, rsp);
     FIH_RET(fih_rc);
@@ -3303,9 +3304,9 @@ fih_ret boot_go_for_image_id(struct boot_rsp* rsp, uint32_t image_id) {
  * Clears the boot state, so that previous operations have no effect on new
  * ones.
  *
- * @param state                 The state that should be cleared. If the value
- *                              is NULL, the default bootloader state will be
- *                              cleared.
+ * @param state The state that should be cleared. If the value
+ *              is NULL, the default bootloader state will be
+ *              cleared.
  */
 void boot_state_clear(struct boot_loader_state* state) {
     if (state != NULL) {
