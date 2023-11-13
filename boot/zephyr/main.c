@@ -316,7 +316,7 @@ static void copy_img_to_SRAM(int slot, unsigned int hdr_offset) {
         goto done;
     }
 
-done:
+done :
     flash_area_close(fap);
 }
 #endif /* !CONFIG_SOC_FAMILY_ESP32 */
@@ -424,7 +424,7 @@ void zephyr_boot_log_stop(void) {
      * available in zephyr.
      * see https://github.com/zephyrproject-rtos/zephyr/issues/21500
      */
-    (void)k_sem_take(&boot_log_sem, K_FOREVER);
+    (void) k_sem_take(&boot_log_sem, K_FOREVER);
 }
 #endif /* defined(CONFIG_LOG) && !defined(ZEPHYR_LOG_MODE_IMMEDIATE) && \
         * !defined(CONFIG_LOG_PROCESS_THREAD) && !defined(ZEPHYR_LOG_MODE_MINIMAL)

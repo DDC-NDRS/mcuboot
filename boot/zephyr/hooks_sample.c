@@ -27,14 +27,13 @@
  *         othervise an error-code value.
  */
 int boot_read_image_header_hook(int img_index, int slot,
-                                struct image_header *img_hed)
-{
-    if (img_index == 1 && slot == 0) {
-            img_hed->ih_magic = IMAGE_MAGIC;
-            return 0;
+                                struct image_header* img_hed) {
+    if ((img_index == 1) && (slot == 0)) {
+        img_hed->ih_magic = IMAGE_MAGIC;
+        return (0);
     }
 
-    return BOOT_HOOK_REGULAR;
+    return (BOOT_HOOK_REGULAR);
 }
 
 /* @retval FIH_SUCCESS: image is valid,
@@ -42,8 +41,7 @@ int boot_read_image_header_hook(int img_index, int slot,
  *         fih encoded BOOT_HOOK_REGULAR if hook not implemented for
  *         the image-slot.
  */
-fih_ret boot_image_check_hook(int img_index, int slot)
-{
+fih_ret boot_image_check_hook(int img_index, int slot) {
     if (img_index == 1 && slot == 0) {
         FIH_RET(FIH_SUCCESS);
     }
@@ -51,14 +49,13 @@ fih_ret boot_image_check_hook(int img_index, int slot)
     FIH_RET(FIH_BOOT_HOOK_REGULAR);
 }
 
-int boot_perform_update_hook(int img_index, struct image_header *img_head,
-                             const struct flash_area *area)
-{
+int boot_perform_update_hook(int img_index, struct image_header* img_head,
+                             const struct flash_area* area) {
     if (img_index == 1) {
-        return 0;
+        return (0);
     }
 
-    return BOOT_HOOK_REGULAR;
+    return (BOOT_HOOK_REGULAR);
 }
 
 int boot_read_swap_state_primary_slot_hook(int image_index,
@@ -66,29 +63,26 @@ int boot_read_swap_state_primary_slot_hook(int image_index,
     if (image_index == 1) {
         state->magic     = BOOT_MAGIC_UNSET;
         state->swap_type = BOOT_SWAP_TYPE_NONE;
-        state->image_num = image_index ; // ?
+        state->image_num = image_index;     // ?
         state->copy_done = BOOT_FLAG_UNSET;
         state->image_ok  = BOOT_FLAG_UNSET;
 
-        return 0;
+        return (0);
     }
 
-    return BOOT_HOOK_REGULAR;
+    return (BOOT_HOOK_REGULAR);
 }
 
-int boot_copy_region_post_hook(int img_index, const struct flash_area *area,
-                               size_t size)
-{
-    return 0;
+int boot_copy_region_post_hook(int img_index, const struct flash_area* area,
+                               size_t size) {
+    return (0);
 }
 
-int boot_serial_uploaded_hook(int img_index, const struct flash_area *area,
-                               size_t size)
-{
-    return 0;
+int boot_serial_uploaded_hook(int img_index, const struct flash_area* area,
+                              size_t size) {
+    return (0);
 }
 
-int boot_img_install_stat_hook(int image_index, int slot, int *img_install_stat)
-{
-    return BOOT_HOOK_REGULAR;
+int boot_img_install_stat_hook(int image_index, int slot, int* img_install_stat) {
+    return (BOOT_HOOK_REGULAR);
 }

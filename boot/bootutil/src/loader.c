@@ -169,8 +169,8 @@ static int boot_add_shared_data(struct boot_loader_state* state,
 /**
  * Fills rsp to indicate how booting should occur.
  *
- * @param  state        Boot loader status information.
- * @param  rsp          boot_rsp struct to fill.
+ * @param state Boot loader status information.
+ * @param rsp   boot_rsp struct to fill.
  */
 static void fill_rsp(struct boot_loader_state* state, struct boot_rsp* rsp) {
     uint32_t active_slot;
@@ -497,6 +497,7 @@ static fih_ret boot_image_check(struct boot_loader_state* state, struct image_he
         if (rc < 0) {
             FIH_RET(fih_rc);
         }
+
         if (rc == 0 && boot_enc_set_key(BOOT_CURR_ENC(state), 1, bs)) {
             FIH_RET(fih_rc);
         }
@@ -534,7 +535,7 @@ static fih_ret split_image_check(struct image_header* app_hdr,
     FIH_CALL(bootutil_img_validate, fih_rc, NULL, 0, app_hdr, app_fap,
              tmpbuf, BOOT_TMPBUF_SZ, loader_hash, 32, NULL);
 
-out:
+out :
     FIH_RET(fih_rc);
 }
 #endif /* !MCUBOOT_DIRECT_XIP && !MCUBOOT_RAM_LOAD */
@@ -696,9 +697,9 @@ static bool boot_rom_address_check(struct boot_loader_state* state) {
  * Check that there is a valid image in a slot
  *
  * @returns
- *         FIH_SUCCESS                      if image was successfully validated
- *         FIH_NO_BOOTABLE_IMAGE            if no bootloable image was found
- *         FIH_FAILURE                      on any errors
+ *  FIH_SUCCESS           if image was successfully validated
+ *  FIH_NO_BOOTABLE_IMAGE if no bootloable image was found
+ *  FIH_FAILURE           on any errors
  */
 static fih_ret boot_validate_slot(struct boot_loader_state* state, int slot,
                                   struct boot_status* bs) {
@@ -813,7 +814,7 @@ static fih_ret boot_validate_slot(struct boot_loader_state* state, int slot,
     }
     #endif
 
-out:
+out :
     flash_area_close(fap);
 
     FIH_RET(fih_rc);
@@ -929,15 +930,15 @@ static void like_mbedtls_zeroize(void* p, size_t n) {
  * Copies the contents of one flash region to another.  You must erase the
  * destination region prior to calling this function.
  *
- * @param flash_area_id_src     The ID of the source flash area.
- * @param flash_area_id_dst     The ID of the destination flash area.
- * @param off_src               The offset within the source flash area to
- *                                  copy from.
- * @param off_dst               The offset within the destination flash area to
- *                                  copy to.
- * @param sz                    The number of bytes to copy.
+ * @param flash_area_id_src The ID of the source flash area.
+ * @param flash_area_id_dst The ID of the destination flash area.
+ * @param off_src           The offset within the source flash area to
+ *                          copy from.
+ * @param off_dst           The offset within the destination flash area to
+ *                          copy to.
+ * @param sz                The number of bytes to copy.
  *
- * @return                      0 on success; nonzero on failure.
+ * @return 0 on success; nonzero on failure.
  */
 int boot_copy_region(struct boot_loader_state* state,
                      const struct flash_area* fap_src,
@@ -1058,13 +1059,13 @@ int boot_copy_region(struct boot_loader_state* state,
  * If a prior copy operation was interrupted by a system reset, this function
  * redos the copy.
  *
- * @param bs                    The current boot status.  This function reads
- *                                  this struct to determine if it is resuming
- *                                  an interrupted swap operation.  This
- *                                  function writes the updated status to this
- *                                  function on return.
+ * @param bs The current boot status.  This function reads
+ *               this struct to determine if it is resuming
+ *               an interrupted swap operation.  This
+ *               function writes the updated status to this
+ *               function on return.
  *
- * @return                      0 on success; nonzero on failure.
+ * @return 0 on success; nonzero on failure.
  */
 #if defined(MCUBOOT_OVERWRITE_ONLY) || defined(MCUBOOT_BOOTSTRAP)
 static int /**/boot_copy_image(struct boot_loader_state* state, struct boot_status* bs) {
@@ -1085,7 +1086,7 @@ static int /**/boot_copy_image(struct boot_loader_state* state, struct boot_stat
     uint32_t sz;
     #endif
 
-    (void)bs;
+    (void) bs;
 
     #if defined(MCUBOOT_OVERWRITE_ONLY_FAST)
     uint32_t src_size = 0;
@@ -2222,6 +2223,7 @@ fih_ret /**/context_boot_go(struct boot_loader_state* state, struct boot_rsp* rs
             FIH_SET(fih_rc, FIH_FAILURE);
             goto out;
         }
+
         ++fih_cnt;
     }
     /*
@@ -2236,7 +2238,8 @@ fih_ret /**/context_boot_go(struct boot_loader_state* state, struct boot_rsp* rs
     fill_rsp(state, rsp);                                                       /* MCUBOOT_SEQ17 */
 
     fih_rc = FIH_SUCCESS;
-out:
+
+out :
     /*
      * Since the boot_status struct stores plaintext encryption keys, reset
      * them here to avoid the possibility of jumping into an image that could
@@ -2245,7 +2248,7 @@ out:
     #if defined(MCUBOOT_ENC_IMAGES) || defined(MCUBOOT_SWAP_SAVE_ENCTLV)
     like_mbedtls_zeroize(&bs, sizeof(bs));
     #else
-    memset(&bs, 0, sizeof(struct boot_status));
+    (void) memset(&bs, 0, sizeof(struct boot_status));
     #endif
 
     close_all_flash_areas(state);
@@ -3245,7 +3248,7 @@ fih_ret context_boot_go(struct boot_loader_state* state, struct boot_rsp* rsp) {
 
     fill_rsp(state, rsp);
 
-out:
+out :
     close_all_flash_areas(state);
 
     if (rc != 0) {

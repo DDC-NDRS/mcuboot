@@ -144,7 +144,7 @@ static int bootutil_img_hash(struct enc_key_data* enc_state, int image_index,
         rc = flash_area_read(fap, off, tmp_buf, blk_sz);
         if (rc) {
             bootutil_sha_drop(&sha_ctx);
-            return rc;
+            return (rc);
         }
 
         #ifdef MCUBOOT_ENC_IMAGES
@@ -224,10 +224,11 @@ static int bootutil_find_key(uint8_t* keyhash, uint8_t keyhash_len) {
         bootutil_sha_finish(&sha_ctx, hash);
         if (!memcmp(hash, keyhash, keyhash_len)) {
             bootutil_sha_drop(&sha_ctx);
-            return i;
+            return (i);
         }
     }
     bootutil_sha_drop(&sha_ctx);
+
     return (-1);
 }
 #else
@@ -272,12 +273,12 @@ static int bootutil_find_key(uint8_t image_index, uint8_t* key, uint16_t key_len
 /**
  * Reads the value of an image's security counter.
  *
- * @param hdr           Pointer to the image header structure.
- * @param fap           Pointer to a description structure of the image's
- *                      flash area.
- * @param security_cnt  Pointer to store the security counter value.
+ * @param hdr Pointer to the image header structure.
+ * @param fap Pointer to a description structure of the image's
+ *            flash area.
+ * @param security_cnt Pointer to store the security counter value.
  *
- * @return              0 on success; nonzero on failure.
+ * @return 0 on success; nonzero on failure.
  */
 int32_t bootutil_get_img_security_cnt(struct image_header* hdr,
                                       const struct flash_area* fap,
@@ -291,17 +292,17 @@ int32_t bootutil_get_img_security_cnt(struct image_header* hdr,
         (fap == NULL) ||
         (img_security_cnt == NULL)) {
         /* Invalid parameter. */
-        return BOOT_EBADARGS;
+        return (BOOT_EBADARGS);
     }
 
     /* The security counter TLV is in the protected part of the TLV area. */
     if (hdr->ih_protect_tlv_size == 0) {
-        return BOOT_EBADIMAGE;
+        return (BOOT_EBADIMAGE);
     }
 
     rc = bootutil_tlv_iter_begin(&it, hdr, fap, IMAGE_TLV_SEC_CNT, true);
     if (rc) {
-        return rc;
+        return (rc);
     }
 
     /* Traverse through the protected TLV area to find
@@ -316,12 +317,12 @@ int32_t bootutil_get_img_security_cnt(struct image_header* hdr,
 
     if (len != sizeof(*img_security_cnt)) {
         /* Security counter is not valid. */
-        return BOOT_EBADIMAGE;
+        return (BOOT_EBADIMAGE);
     }
 
     rc = LOAD_IMAGE_DATA(hdr, fap, off, img_security_cnt, len);
     if (rc != 0) {
-        return BOOT_EFLASH;
+        return (BOOT_EFLASH);
     }
 
     return (0);
@@ -366,7 +367,7 @@ fih_ret bootutil_img_validate(struct enc_key_data* enc_state, int image_index,
     }
 
     if (out_hash) {
-        memcpy(out_hash, hash, IMAGE_HASH_SIZE);
+        (void) memcpy(out_hash, hash, IMAGE_HASH_SIZE);
     }
 
     rc = bootutil_tlv_iter_begin(&it, hdr, fap, IMAGE_TLV_ANY, false);
@@ -526,7 +527,7 @@ fih_ret bootutil_img_validate(struct enc_key_data* enc_state, int image_index,
     }
     #endif
 
-out:
+out :
     if (rc) {
         FIH_SET(fih_rc, FIH_FAILURE);
     }

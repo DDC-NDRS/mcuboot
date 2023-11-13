@@ -217,7 +217,7 @@ int boot_read_swap_state(const struct flash_area* fap,
     off = boot_magic_off(fap);
     rc  = flash_area_read(fap, off, magic, BOOT_MAGIC_SZ);
     if (rc < 0) {
-        return BOOT_EFLASH;
+        return (BOOT_EFLASH);
     }
 
     if (bootutil_buffer_is_erased(fap, magic, BOOT_MAGIC_SZ)) {
@@ -230,7 +230,7 @@ int boot_read_swap_state(const struct flash_area* fap,
     off = boot_swap_info_off(fap);
     rc  = flash_area_read(fap, off, &swap_info, sizeof(swap_info));
     if (rc < 0) {
-        return BOOT_EFLASH;
+        return (BOOT_EFLASH);
     }
 
     /* Extract the swap type and image number */
@@ -245,7 +245,7 @@ int boot_read_swap_state(const struct flash_area* fap,
 
     rc = boot_read_copy_done(fap, &state->copy_done);
     if (rc) {
-        return BOOT_EFLASH;
+        return (BOOT_EFLASH);
     }
 
     return boot_read_image_ok(fap, &state->image_ok);
@@ -286,16 +286,15 @@ int boot_write_magic(const struct flash_area* fap) {
 
     erased_val = flash_area_erased_val(fap);
 
-    memset(&magic[0], erased_val, sizeof(magic));
-    memcpy(&magic[BOOT_MAGIC_ALIGN_SIZE - BOOT_MAGIC_SZ], BOOT_IMG_MAGIC, BOOT_MAGIC_SZ);
+    (void) memset(&magic[0], erased_val, sizeof(magic));
+    (void) memcpy(&magic[BOOT_MAGIC_ALIGN_SIZE - BOOT_MAGIC_SZ], BOOT_IMG_MAGIC, BOOT_MAGIC_SZ);
 
     BOOT_LOG_DBG("writing magic; fa_id=%d off=0x%lx (0x%lx)",
                  flash_area_get_id(fap), (unsigned long)off,
                  (unsigned long)(flash_area_get_off(fap) + off));
     rc = flash_area_write(fap, pad_off, &magic[0], BOOT_MAGIC_ALIGN_SIZE);
-
     if (rc != 0) {
-        return BOOT_EFLASH;
+        return (BOOT_EFLASH);
     }
 
     return (0);
@@ -325,7 +324,7 @@ int boot_write_trailer(const struct flash_area* fap, uint32_t off,
 
     rc = flash_area_write(fap, off, buf, align);
     if (rc != 0) {
-        return BOOT_EFLASH;
+        return (BOOT_EFLASH);
     }
 
     return (0);
@@ -616,14 +615,14 @@ int boot_swap_type(void) {
  * next reboot, the system will perform a one-time boot of the the secondary
  * slot image.
  *
- * @param image_index       Image pair index.
+ * @param image_index Image pair index.
  *
- * @param permanent         Whether the image should be used permanently or
- *                          only tested once:
- *                               0=run image once, then confirm or revert.
- *                               1=run image forever.
+ * @param permanent   Whether the image should be used permanently or
+ *                    only tested once:
+ *                         0=run image once, then confirm or revert.
+ *                         1=run image forever.
  *
- * @return                  0 on success; nonzero on failure.
+ * @return 0 on success; nonzero on failure.
  */
 int boot_set_pending_multi(int image_index, int permanent) {
     const struct flash_area* fap;
@@ -631,7 +630,7 @@ int boot_set_pending_multi(int image_index, int permanent) {
 
     rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY(image_index), &fap);
     if (rc != 0) {
-        return BOOT_EFLASH;
+        return (BOOT_EFLASH);
     }
 
     rc = boot_set_next(fap, false, !(permanent == 0));
@@ -647,12 +646,12 @@ int boot_set_pending_multi(int image_index, int permanent) {
  * image. Note that this API is kept for compatibility. The
  * boot_set_pending_multi() API is recommended.
  *
- * @param permanent         Whether the image should be used permanently or
- *                          only tested once:
- *                               0=run image once, then confirm or revert.
- *                               1=run image forever.
+ * @param permanent Whether the image should be used permanently or
+ *                  only tested once:
+ *                       0=run image once, then confirm or revert.
+ *                       1=run image forever.
  *
- * @return                  0 on success; nonzero on failure.
+ * @return 0 on success; nonzero on failure.
  */
 int boot_set_pending(int permanent) {
     return boot_set_pending_multi(0, permanent);
@@ -663,9 +662,9 @@ int boot_set_pending(int permanent) {
  * system will continue booting into the image in the primary slot until told to
  * boot from a different slot.
  *
- * @param image_index       Image pair index.
+ * @param image_index Image pair index.
  *
- * @return                  0 on success; nonzero on failure.
+ * @return 0 on success; nonzero on failure.
  */
 int boot_set_confirmed_multi(int image_index) {
     const struct flash_area* fap = NULL;
@@ -673,7 +672,7 @@ int boot_set_confirmed_multi(int image_index) {
 
     rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index), &fap);
     if (rc != 0) {
-        return BOOT_EFLASH;
+        return (BOOT_EFLASH);
     }
 
     rc = boot_set_next(fap, true, true);
@@ -689,7 +688,7 @@ int boot_set_confirmed_multi(int image_index) {
  * from a different slot.  Note that this API is kept for compatibility. The
  * boot_set_confirmed_multi() API is recommended.
  *
- * @return                  0 on success; nonzero on failure.
+ * @return 0 on success; nonzero on failure.
  */
 int boot_set_confirmed(void) {
     return boot_set_confirmed_multi(0);
@@ -708,17 +707,16 @@ int boot_image_load_header(const struct flash_area* fa_p, struct image_header* h
 
     if (hdr->ih_magic != IMAGE_MAGIC) {
         BOOT_LOG_ERR("Bad image magic 0x%lx", (unsigned long)hdr->ih_magic);
-
         return (BOOT_EBADIMAGE);
     }
 
     if (hdr->ih_flags & IMAGE_F_NON_BOOTABLE) {
         BOOT_LOG_ERR("Image not bootable");
-
         return (BOOT_EBADIMAGE);
     }
 
-    if (!boot_u32_safe_add(&size, hdr->ih_img_size, hdr->ih_hdr_size) || size >= flash_area_get_size(fa_p)) {
+    if (!boot_u32_safe_add(&size, hdr->ih_img_size, hdr->ih_hdr_size) ||
+        (size >= flash_area_get_size(fa_p))) {
         return (BOOT_EBADIMAGE);
     }
 

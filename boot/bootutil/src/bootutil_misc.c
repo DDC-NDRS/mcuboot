@@ -50,17 +50,17 @@ int boot_current_slot;
 /**
  * @brief Determine if the data at two memory addresses is equal
  *
- * @param s1    The first  memory region to compare.
- * @param s2    The second memory region to compare.
- * @param n     The amount of bytes to compare.
+ * @param s1 The first  memory region to compare.
+ * @param s2 The second memory region to compare.
+ * @param n  The amount of bytes to compare.
  *
- * @note        This function does not comply with the specification of memcmp,
- *              so should not be considered a drop-in replacement. It has no
- *              constant time execution. The point is to make sure that all the
- *              bytes are compared and detect if loop was abused and some cycles
- *              was skipped due to fault injection.
+ * @note This function does not comply with the specification of memcmp,
+ *       so should not be considered a drop-in replacement. It has no
+ *       constant time execution. The point is to make sure that all the
+ *       bytes are compared and detect if loop was abused and some cycles
+ *       was skipped due to fault injection.
  *
- * @return      FIH_SUCCESS if memory regions are equal, otherwise FIH_FAILURE
+ * @return FIH_SUCCESS if memory regions are equal, otherwise FIH_FAILURE
  */
 #ifdef MCUBOOT_FIH_PROFILE_OFF
 inline fih_ret boot_fih_memequal(void const* s1, void const* s2, size_t n) {
@@ -68,7 +68,7 @@ inline fih_ret boot_fih_memequal(void const* s1, void const* s2, size_t n) {
 }
 #else
 fih_ret boot_fih_memequal(void const* s1, void const* s2, size_t n) {
-    size_t   i;
+    size_t i;
     uint8_t* s1_p = (uint8_t*)s1;
     uint8_t* s2_p = (uint8_t*)s2;
     FIH_DECLARE(ret, FIH_FAILURE);
@@ -78,11 +78,12 @@ fih_ret boot_fih_memequal(void const* s1, void const* s2, size_t n) {
             goto out;
         }
     }
+
     if (i == n) {
         ret = FIH_SUCCESS;
     }
 
-out:
+out :
     FIH_RET(ret);
 }
 #endif
