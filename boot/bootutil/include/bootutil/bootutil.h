@@ -42,7 +42,7 @@ extern "C" {
 #define BOOT_IMAGE_NUMBER          1
 #endif
 
-_Static_assert(BOOT_IMAGE_NUMBER > 0, "Invalid value for BOOT_IMAGE_NUMBER");
+_Static_assert((BOOT_IMAGE_NUMBER > 0), "Invalid value for BOOT_IMAGE_NUMBER");
 
 struct image_header;
 /**
@@ -71,25 +71,25 @@ struct image_trailer {
     uint8_t pad2[BOOT_MAX_ALIGN - 1];
     uint8_t image_ok;
     uint8_t pad3[BOOT_MAX_ALIGN - 1];
-#if BOOT_MAX_ALIGN > BOOT_MAGIC_SZ
+    #if (BOOT_MAX_ALIGN > BOOT_MAGIC_SZ)
     uint8_t pad4[BOOT_MAGIC_ALIGN_SIZE - BOOT_MAGIC_SZ];
-#endif
+    #endif
     uint8_t magic[BOOT_MAGIC_SZ];
 };
 
 /* you must have pre-allocated all the entries within this structure */
-fih_ret boot_go(struct boot_rsp *rsp);
-fih_ret boot_go_for_image_id(struct boot_rsp *rsp, uint32_t image_id);
+fih_ret boot_go(struct boot_rsp* rsp);
+fih_ret boot_go_for_image_id(struct boot_rsp* rsp, uint32_t image_id);
 
 struct boot_loader_state;
-void boot_state_clear(struct boot_loader_state *state);
-fih_ret context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp);
+void boot_state_clear(struct boot_loader_state* state);
+fih_ret context_boot_go(struct boot_loader_state* state, struct boot_rsp* rsp);
 
 #define SPLIT_GO_OK                 (0)
 #define SPLIT_GO_NON_MATCHING       (-1)
 #define SPLIT_GO_ERR                (-2)
 
-fih_ret split_go(int loader_slot, int split_slot, void **entry);
+fih_ret split_go(int loader_slot, int split_slot, void** entry);
 
 #ifdef __cplusplus
 }
