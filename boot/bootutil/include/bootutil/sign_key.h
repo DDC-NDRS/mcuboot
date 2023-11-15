@@ -34,15 +34,15 @@ extern "C" {
 
 #ifndef MCUBOOT_HW_KEY
 struct bootutil_key {
-    const uint8_t *key;
-    const unsigned int *len;
+    const uint8_t* key;
+    const unsigned int* len;
 };
 
 extern const struct bootutil_key bootutil_keys[];
 #else
 struct bootutil_key {
-    uint8_t *key;
-    unsigned int *len;
+    uint8_t* key;
+    unsigned int* len;
 };
 
 extern struct bootutil_key bootutil_keys[];
@@ -50,16 +50,16 @@ extern struct bootutil_key bootutil_keys[];
 /**
  * Retrieve the hash of the corresponding public key for image authentication.
  *
- * @param[in]      image_index      Index of the image to be authenticated.
- * @param[out]     public_key_hash  Buffer to store the key-hash in.
- * @param[in,out]  key_hash_size    As input the size of the buffer. As output
- *                                  the actual key-hash length.
+ * @param[in]     image_index     Index of the image to be authenticated.
+ * @param[out]    public_key_hash Buffer to store the key-hash in.
+ * @param[in,out] key_hash_size   As input the size of the buffer. As output
+ *                                the actual key-hash length.
  *
- * @return                          0 on success; nonzero on failure.
+ * @return 0 on success; nonzero on failure.
  */
-int boot_retrieve_public_key_hash(uint8_t image_index,
-                                  uint8_t *public_key_hash,
-                                  size_t *key_hash_size);
+int boot_retrieve_public_key_hash(uint8_t  image_index,
+                                  uint8_t* public_key_hash,
+                                  size_t*  key_hash_size);
 #endif /* !MCUBOOT_HW_KEY */
 
 extern const int bootutil_key_cnt;
