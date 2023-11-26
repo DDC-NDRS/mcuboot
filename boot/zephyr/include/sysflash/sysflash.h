@@ -12,6 +12,8 @@
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/sys/util_macro.h>
 
+#undef CONFIG_SINGLE_APPLICATION_SLOT       /* #CUSTOM@NDRS : forced eclipse indexer according to autoconf.h */
+
 #ifndef CONFIG_SINGLE_APPLICATION_SLOT
 
 /* Each pair of slots is separated by , and there is no terminating character */
@@ -30,12 +32,12 @@
                             FLASH_AREA_IMAGE_2_SLOTS
 #endif
 
-static inline uint32_t __flash_area_ids_for_slot(int img, int slot)
-{
+static inline uint32_t __flash_area_ids_for_slot(int img, int slot) {
     static const int all_slots[] = {
         FOR_EACH_NONEMPTY_TERM(FIXED_PARTITION_ID, (,), ALL_AVAILABLE_SLOTS)
     };
-    return all_slots[img * 2 + slot];
+
+    return (all_slots[(img * 2) + slot]);
 };
 
 #undef FLASH_AREA_IMAGE_0_SLOTS
@@ -43,8 +45,8 @@ static inline uint32_t __flash_area_ids_for_slot(int img, int slot)
 #undef FLASH_AREA_IMAGE_2_SLOTS
 #undef ALL_AVAILABLE_SLOTS
 
-#define FLASH_AREA_IMAGE_PRIMARY(x) __flash_area_ids_for_slot(x, 0)
-#define FLASH_AREA_IMAGE_SECONDARY(x) __flash_area_ids_for_slot(x, 1)
+#define FLASH_AREA_IMAGE_PRIMARY(x)     __flash_area_ids_for_slot(x, 0)
+#define FLASH_AREA_IMAGE_SECONDARY(x)   __flash_area_ids_for_slot(x, 1)
 
 #if !defined(CONFIG_BOOT_SWAP_USING_MOVE)
 #define FLASH_AREA_IMAGE_SCRATCH    FIXED_PARTITION_ID(scratch_partition)
@@ -52,7 +54,7 @@ static inline uint32_t __flash_area_ids_for_slot(int img, int slot)
 
 #else /* CONFIG_SINGLE_APPLICATION_SLOT */
 
-#define FLASH_AREA_IMAGE_PRIMARY(x)	FIXED_PARTITION_ID(slot0_partition)
+#define FLASH_AREA_IMAGE_PRIMARY(x)	    FIXED_PARTITION_ID(slot0_partition)
 #define FLASH_AREA_IMAGE_SECONDARY(x)	FIXED_PARTITION_ID(slot0_partition)
 
 #endif /* CONFIG_SINGLE_APPLICATION_SLOT */
