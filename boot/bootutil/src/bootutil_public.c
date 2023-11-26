@@ -39,6 +39,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <stddef.h>
+#include <stdlib.h>
 
 #include "sysflash/sysflash.h"
 #include "flash_map_backend/flash_map_backend.h"
@@ -721,4 +722,9 @@ int boot_image_load_header(const struct flash_area* fa_p, struct image_header* h
     }
 
     return (0);
+}
+
+void mcuboot_assert_handler(const char *file, int line, const char *func) {
+    BOOT_LOG_ERR("assertion failed: file \"%s\", line %d, func: %s\n", file, line, func);
+    abort();
 }
