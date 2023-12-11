@@ -29,17 +29,17 @@
 #include <mcuboot_config/mcuboot_config.h>
 
 #if !defined(MCUBOOT_HW_KEY)
-#if defined(MCUBOOT_SIGN_RSA) || defined(MCUBOOT_SIGN_EC256) || defined(MCUBOOT_SIGN_ED25519)
+#if (defined(MCUBOOT_SIGN_RSA) || defined(MCUBOOT_SIGN_EC256) || defined(MCUBOOT_SIGN_ED25519))
 #define HAVE_KEYS
 #if defined(MCUBOOT_SIGN_RSA)
-extern const unsigned char rsa_pub_key[];
-extern unsigned int rsa_pub_key_len;
+extern unsigned char const rsa_pub_key[];
+extern unsigned int        rsa_pub_key_len;
 #elif defined(MCUBOOT_SIGN_EC256)
-extern const unsigned char ecdsa_pub_key[];
-extern unsigned int ecdsa_pub_key_len;
+extern unsigned char const ecdsa_pub_key[];
+extern unsigned int        ecdsa_pub_key_len;
 #elif defined(MCUBOOT_SIGN_ED25519)
-extern const unsigned char ed25519_pub_key[];
-extern unsigned int ed25519_pub_key_len;
+extern unsigned char const ed25519_pub_key[];
+extern unsigned int        ed25519_pub_key_len;
 #endif
 #endif
 
@@ -51,34 +51,34 @@ extern unsigned int ed25519_pub_key_len;
 #if defined(HAVE_KEYS)
 const struct bootutil_key bootutil_keys[] = {
     {
-#if defined(MCUBOOT_SIGN_RSA)
+        #if defined(MCUBOOT_SIGN_RSA)
         .key = rsa_pub_key,
         .len = &rsa_pub_key_len,
-#elif defined(MCUBOOT_SIGN_EC256)
+        #elif defined(MCUBOOT_SIGN_EC256)
         .key = ecdsa_pub_key,
         .len = &ecdsa_pub_key_len,
-#elif defined(MCUBOOT_SIGN_ED25519)
+        #elif defined(MCUBOOT_SIGN_ED25519)
         .key = ed25519_pub_key,
         .len = &ed25519_pub_key_len,
-#endif
+        #endif
     },
 };
-const int bootutil_key_cnt = 1;
+int const bootutil_key_cnt = 1;
 #endif /* HAVE_KEYS */
 #else
-unsigned int pub_key_len;
+unsigned int        pub_key_len;
 struct bootutil_key bootutil_keys[1] = {
     {
         .key = 0,
         .len = &pub_key_len,
     }
 };
-const int bootutil_key_cnt = 1;
+int const bootutil_key_cnt = 1;
 #endif /* !MCUBOOT_HW_KEY */
 
-#if defined(MCUBOOT_ENCRYPT_RSA) || defined(MCUBOOT_ENCRYPT_X25519) || defined(MCUBOOT_ENCRYPT_EC256)
-extern const unsigned char enc_priv_key[];
-extern unsigned int enc_priv_key_len;
+#if (defined(MCUBOOT_ENCRYPT_RSA) || defined(MCUBOOT_ENCRYPT_X25519) || defined(MCUBOOT_ENCRYPT_EC256))
+extern unsigned char const enc_priv_key[];
+extern unsigned int        enc_priv_key_len;
 const struct bootutil_key bootutil_enc_key = {
     .key = enc_priv_key,
     .len = &enc_priv_key_len,

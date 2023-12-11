@@ -28,19 +28,18 @@ fih_int _fih_cfi_ctr = {0};
 
 /* Increment the CFI counter by one, and return the value before the increment.
  */
-fih_int fih_cfi_get_and_increment(void)
-{
+fih_int fih_cfi_get_and_increment(void) {
     fih_int saved = _fih_cfi_ctr;
     _fih_cfi_ctr = fih_int_encode(fih_int_decode(saved) + 1);
-    return saved;
+
+    return (saved);
 }
 
 /* Validate that the saved precall value is the same as the value of the global
  * counter. For this to be the case, a fih_ret must have been called between
  * these functions being executed. If the values aren't the same then panic.
  */
-void fih_cfi_validate(fih_int saved)
-{
+void fih_cfi_validate(fih_int saved) {
     if (fih_int_decode(saved) != fih_int_decode(_fih_cfi_ctr)) {
         FIH_PANIC;
     }
@@ -49,8 +48,7 @@ void fih_cfi_validate(fih_int saved)
 /* Decrement the global CFI counter by one, so that it has the same value as
  * before the cfi_precall
  */
-void fih_cfi_decrement(void)
-{
+void fih_cfi_decrement(void) {
     _fih_cfi_ctr = fih_int_encode(fih_int_decode(_fih_cfi_ctr) - 1);
 }
 
@@ -63,8 +61,7 @@ void fih_cfi_decrement(void)
  */
 __attribute__((used))
 __attribute__((noinline))
-void fih_panic_loop(void)
-{
+void fih_panic_loop(void) {
     __asm volatile ("b fih_panic_loop");
     __asm volatile ("b fih_panic_loop");
     __asm volatile ("b fih_panic_loop");
