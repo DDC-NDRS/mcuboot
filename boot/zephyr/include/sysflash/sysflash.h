@@ -12,6 +12,8 @@
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/sys/util_macro.h>
 
+#undef CONFIG_SINGLE_APPLICATION_SLOT       /* #CUSTOM@NDRS : forced eclipse indexer according to autoconf.h */
+
 #if !defined(CONFIG_SINGLE_APPLICATION_SLOT) && !defined(CONFIG_MCUBOOT_BOOTLOADER_MODE_SINGLE_APP)
 
 /* Each pair of slots is separated by , and there is no terminating character */
@@ -30,12 +32,12 @@
                             FLASH_AREA_IMAGE_2_SLOTS
 #endif
 
-static inline uint32_t __flash_area_ids_for_slot(int img, int slot)
-{
+static inline uint32_t __flash_area_ids_for_slot(int img, int slot) {
     static const int all_slots[] = {
         FOR_EACH_NONEMPTY_TERM(FIXED_PARTITION_ID, (,), ALL_AVAILABLE_SLOTS)
     };
-    return all_slots[img * 2 + slot];
+
+    return (all_slots[(img * 2) + slot]);
 };
 
 #undef FLASH_AREA_IMAGE_0_SLOTS
