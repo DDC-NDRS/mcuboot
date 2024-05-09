@@ -9,7 +9,7 @@
 #define H_ARM_CLEANUP_
 
 /**
- * Cleanup interrupt priority and interupt enable registers.
+ * Cleanup interrupt priority and interrupt enable registers.
  */
 void cleanup_arm_nvic(void);
 

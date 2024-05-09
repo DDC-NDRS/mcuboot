@@ -52,12 +52,11 @@ static unsigned char mempool[CRYPTO_HEAP_SIZE];
 /*
  * Initialize mbedtls to be able to use the local heap.
  */
-void os_heap_init(void)
-{
+void os_heap_init(void) {
     mbedtls_memory_buffer_alloc_init(mempool, sizeof(mempool));
 }
 #else
-void os_heap_init(void)
-{
+void os_heap_init(void) {
+    /* pass */
 }
 #endif

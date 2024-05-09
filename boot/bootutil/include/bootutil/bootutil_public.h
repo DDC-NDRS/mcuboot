@@ -79,7 +79,7 @@ extern "C" {
 #define BOOT_SWAP_TYPE_FAIL     5
 
 /** Swapping encountered an unrecoverable error */
-#define BOOT_SWAP_TYPE_PANIC    0xff
+#define BOOT_SWAP_TYPE_PANIC    0xFF
 
 #define BOOT_MAGIC_SZ           16
 
@@ -111,17 +111,17 @@ _Static_assert(MCUBOOT_BOOT_MAX_ALIGN >= 8 && MCUBOOT_BOOT_MAX_ALIGN <= 32,
 #define BOOT_FLAG_UNSET     3
 #define BOOT_FLAG_ANY       4  /* NOTE: control only, not dependent on sector */
 
-#define BOOT_EFLASH      1
-#define BOOT_EFILE       2
-#define BOOT_EBADIMAGE   3
-#define BOOT_EBADVECT    4
-#define BOOT_EBADSTATUS  5
-#define BOOT_ENOMEM      6
-#define BOOT_EBADARGS    7
-#define BOOT_EBADVERSION 8
-#define BOOT_EFLASH_SEC  9
+#define BOOT_EFLASH         1
+#define BOOT_EFILE          2
+#define BOOT_EBADIMAGE      3
+#define BOOT_EBADVECT       4
+#define BOOT_EBADSTATUS     5
+#define BOOT_ENOMEM         6
+#define BOOT_EBADARGS       7
+#define BOOT_EBADVERSION    8
+#define BOOT_EFLASH_SEC     9
 
-#define BOOT_HOOK_REGULAR 1
+#define BOOT_HOOK_REGULAR   1
 /*
  * Extract the swap type and image number from image trailers's swap_info
  * filed.
@@ -131,8 +131,8 @@ _Static_assert(MCUBOOT_BOOT_MAX_ALIGN >= 8 && MCUBOOT_BOOT_MAX_ALIGN <= 32,
 
 /* Construct the swap_info field from swap type and image number */
 #define BOOT_SET_SWAP_INFO(swap_info, image, type)  {                          \
-                                                    assert((image) < 0xF);     \
-                                                    assert((type)  < 0xF);     \
+                                                    assert((image) < 0x0F);    \
+                                                    assert((type)  < 0x0F);    \
                                                     (swap_info) = (image) << 4 \
                                                                 | (type);      \
                                                     }
@@ -178,14 +178,14 @@ int boot_swap_type(void);
  * next reboot, the system will perform a one-time boot of the the secondary
  * slot image.
  *
- * @param image_index       Image pair index.
+ * @param image_index Image pair index.
  *
- * @param permanent         Whether the image should be used permanently or
- *                          only tested once:
- *                               0=run image once, then confirm or revert.
- *                               1=run image forever.
+ * @param permanent Whether the image should be used permanently or
+ *                  only tested once:
+ *                       0=run image once, then confirm or revert.
+ *                       1=run image forever.
  *
- * @return                  0 on success; nonzero on failure.
+ * @return 0 on success; nonzero on failure.
  */
 int boot_set_pending_multi(int image_index, int permanent);
 
@@ -195,12 +195,12 @@ int boot_set_pending_multi(int image_index, int permanent);
  * image. Note that this API is kept for compatibility. The
  * boot_set_pending_multi() API is recommended.
  *
- * @param permanent         Whether the image should be used permanently or
- *                          only tested once:
- *                               0=run image once, then confirm or revert.
- *                               1=run image forever.
+ * @param permanent Whether the image should be used permanently or
+ *                  only tested once:
+ *                       0=run image once, then confirm or revert.
+ *                       1=run image forever.
  *
- * @return                  0 on success; nonzero on failure.
+ * @return 0 on success; nonzero on failure.
  */
 int boot_set_pending(int permanent);
 
@@ -209,9 +209,9 @@ int boot_set_pending(int permanent);
  * system will continue booting into the image in the primary slot until told to
  * boot from a different slot.
  *
- * @param image_index       Image pair index.
+ * @param image_index Image pair index.
  *
- * @return                  0 on success; nonzero on failure.
+ * @return 0 on success; nonzero on failure.
  */
 int boot_set_confirmed_multi(int image_index);
 
@@ -221,7 +221,7 @@ int boot_set_confirmed_multi(int image_index);
  * from a different slot.  Note that this API is kept for compatibility. The
  * boot_set_confirmed_multi() API is recommended.
  *
- * @return                  0 on success; nonzero on failure.
+ * @return 0 on success; nonzero on failure.
  */
 int boot_set_confirmed(void);
 
@@ -232,7 +232,7 @@ int boot_set_confirmed(void);
  *
  * @retval offset of the swap info field.
  */
-uint32_t boot_swap_info_off(const struct flash_area *fap);
+uint32_t boot_swap_info_off(const struct flash_area* fap);
 
 /**
  * @brief Get value of image-ok flag of the image.
@@ -245,7 +245,7 @@ uint32_t boot_swap_info_off(const struct flash_area *fap);
  *
  * @return 0 on success; nonzero on failure.
  */
-int boot_read_image_ok(const struct flash_area *fap, uint8_t *image_ok);
+int boot_read_image_ok(const struct flash_area* fap, uint8_t* image_ok);
 
 /**
  * @brief Read the image swap state
@@ -256,7 +256,7 @@ int boot_read_image_ok(const struct flash_area *fap, uint8_t *image_ok);
  * @return 0 on success; non-zero error code on failure;
  */
 int
-boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state);
+boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state* state);
 
 /**
  * @brief Read the image swap state
@@ -267,8 +267,8 @@ boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state);
  * @return 0 on success; non-zero error code on failure.
  */
 int
-boot_read_swap_state(const struct flash_area *fa,
-                     struct boot_swap_state *state);
+boot_read_swap_state(const struct flash_area* fa,
+                     struct boot_swap_state* state);
 
 /**
  * @brief Set next image application slot by flash area pointer
@@ -295,19 +295,19 @@ boot_read_swap_state(const struct flash_area *fa,
  * @return 0 on success; non-zero error code on failure.
  */
 int
-boot_set_next(const struct flash_area *fa, bool active, bool confirm);
+boot_set_next(const struct flash_area* fa, bool active, bool confirm);
 
 /**
  * Attempts to load image header from flash; verifies flash header fields.
  *
- * @param[in]   fa_p    flash area pointer
- * @param[out]  hdr     buffer for image header
+ * @param[in]  fa_p flash area pointer
+ * @param[out] hdr  buffer for image header
  *
- * @return              0 on success, error code otherwise
+ * @return 0 on success, error code otherwise
  */
 int
-boot_image_load_header(const struct flash_area *fa_p,
-                       struct image_header *hdr);
+boot_image_load_header(const struct flash_area* fa_p,
+                       struct image_header* hdr);
 
 #ifdef __cplusplus
 }
