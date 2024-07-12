@@ -257,7 +257,7 @@ int
 boot_read_enc_key(const struct flash_area* fap, uint8_t slot, struct boot_status* bs) {
     uint32_t off;
     #if MCUBOOT_SWAP_SAVE_ENCTLV
-    int i;
+    uint32_t i;
     #endif
     int rc;
 
