@@ -96,10 +96,10 @@ extern "C" {
 #define FIH_CONST1 0x1FCDEA88
 #define FIH_CONST2 0x19C1F6E1
 #else
-#define FIH_POSITIVE_VALUE 0
+#define FIH_POSITIVE_VALUE  0
 #define FIH_NEGATIVE_VALUE -1
-#define FIH_CONST1 1
-#define FIH_CONST2 1
+#define FIH_CONST1          1
+#define FIH_CONST2          1
 #endif
 
 /* A volatile mask is used to prevent compiler optimization - the mask is xored
@@ -152,8 +152,7 @@ void fih_panic_loop(void);
 
 /* Delaying logic, with randomness from a CSPRNG */
 __attribute__((always_inline)) inline
-int fih_delay(void)
-{
+int fih_delay(void) {
     unsigned char delay;
     int foo = 0;
     volatile int rc;
@@ -169,29 +168,26 @@ int fih_delay(void)
     /* rc is volatile so if it is the return value then the function cannot be
      * optimized
      */
-    return rc;
+    return (rc);
 }
 
 #else
 
 __attribute__((always_inline)) inline
-int fih_delay_init(void)
-{
-    return 1;
+int fih_delay_init(void) {
+    return (1);
 }
 
 __attribute__((always_inline)) inline
-int fih_delay(void)
-{
-    return 1;
+int fih_delay(void) {
+    return (1);
 }
 #endif /* FIH_ENABLE_DELAY */
 
 #ifdef FIH_ENABLE_DOUBLE_VARS
 
 __attribute__((always_inline)) inline
-void fih_int_validate(fih_int x)
-{
+void fih_int_validate(fih_int x) {
     if (x.val != (x.msk ^ _fih_mask)) {
         FIH_PANIC;
     }
@@ -199,18 +195,18 @@ void fih_int_validate(fih_int x)
 
 /* Convert a fih_int to an int. Validate for tampering. */
 __attribute__((always_inline)) inline
-int fih_int_decode(fih_int x)
-{
+int fih_int_decode(fih_int x) {
     fih_int_validate(x);
-    return x.val;
+
+    return (x.val);
 }
 
 /* Convert an int to a fih_int, can be used to encode specific error codes. */
 __attribute__((always_inline)) inline
-fih_int fih_int_encode(int x)
-{
+fih_int fih_int_encode(int x) {
     fih_int ret = {x, x ^ _fih_mask};
-    return ret;
+
+    return (ret);
 }
 
 /* Standard equality. If A == B then 1, else 0 */
@@ -222,29 +218,26 @@ fih_int fih_int_encode(int x)
 
 /* NOOP */
 __attribute__((always_inline)) inline
-void fih_int_validate(fih_int x)
-{
+void fih_int_validate(fih_int x) {
     (void) x;
     return;
 }
 
 /* NOOP */
 __attribute__((always_inline)) inline
-int fih_int_decode(fih_int x)
-{
-    return x;
+int fih_int_decode(fih_int x) {
+    return (x);
 }
 
 /* NOOP */
 __attribute__((always_inline)) inline
-fih_int fih_int_encode(int x)
-{
-    return x;
+fih_int fih_int_encode(int x) {
+    return (x);
 }
 
-#define FIH_EQ(x, y) (x == y)
-#define FIH_NOT_EQ(x, y) (x != y)
-#define FIH_SET(x, y) x = y
+#define FIH_EQ(x, y)        (x == y)
+#define FIH_NOT_EQ(x, y)    (x != y)
+#define FIH_SET(x, y)        x = y
 
 #endif /* FIH_ENABLE_DOUBLE_VARS */
 
@@ -256,12 +249,12 @@ fih_int fih_int_encode(int x)
  * value that is not FIH_SUCCESS
  */
 __attribute__((always_inline)) inline
-fih_ret fih_ret_encode_zero_equality(int x)
-{
+fih_ret fih_ret_encode_zero_equality(int x) {
     if (x) {
-        return FIH_FAILURE;
-    } else {
-        return FIH_SUCCESS;
+        return (FIH_FAILURE);
+    }
+    else {
+        return (FIH_SUCCESS);
     }
 }
 
@@ -302,30 +295,30 @@ void fih_cfi_decrement(void);
 #if defined(__ICCARM__)
 #define FIH_CALL(f, ret, ...) FIH_CALL2(f, ret, __LINE__, __COUNTER__, __VA_ARGS__)
 
-#define FIH_CALL2(f, ret, l, c, ...) \
-    do { \
-        FIH_LABEL("FIH_CALL_START", l, c);        \
-        FIH_CFI_PRECALL_BLOCK; \
-        ret = FIH_FAILURE; \
-        if (fih_delay()) { \
-            ret = f(__VA_ARGS__); \
-        } \
-        FIH_CFI_POSTCALL_BLOCK; \
-        FIH_LABEL("FIH_CALL_END", l, c);          \
+#define FIH_CALL2(f, ret, l, c, ...)        \
+    do {                                    \
+        FIH_LABEL("FIH_CALL_START", l, c);  \
+        FIH_CFI_PRECALL_BLOCK;              \
+        ret = FIH_FAILURE;                  \
+        if (fih_delay()) {                  \
+            ret = f(__VA_ARGS__);           \
+        }                                   \
+        FIH_CFI_POSTCALL_BLOCK;             \
+        FIH_LABEL("FIH_CALL_END", l, c);    \
     } while (0)
 
 #else
 
-#define FIH_CALL(f, ret, ...) \
-    do { \
-        FIH_LABEL("FIH_CALL_START"); \
-        FIH_CFI_PRECALL_BLOCK; \
-        ret = FIH_FAILURE; \
-        if (fih_delay()) { \
-            ret = f(__VA_ARGS__); \
-        } \
-        FIH_CFI_POSTCALL_BLOCK; \
-        FIH_LABEL("FIH_CALL_END"); \
+#define FIH_CALL(f, ret, ...)               \
+    do {                                    \
+        FIH_LABEL("FIH_CALL_START");        \
+        FIH_CFI_PRECALL_BLOCK;              \
+        ret = FIH_FAILURE;                  \
+        if (fih_delay()) {                  \
+            ret = f(__VA_ARGS__);           \
+        }                                   \
+        FIH_CFI_POSTCALL_BLOCK;             \
+        FIH_LABEL("FIH_CALL_END");          \
     } while (0)
 #endif
 
@@ -333,10 +326,10 @@ void fih_cfi_decrement(void);
  * FIH_CALL then you need to do a FIH_RET else the state machine will detect
  * tampering and panic.
  */
-#define FIH_RET(ret) \
-    do { \
-        FIH_CFI_PRERET; \
-        return ret; \
+#define FIH_RET(ret)                        \
+    do {                                    \
+        FIH_CFI_PRERET;                     \
+        return (ret);                       \
     } while (0)
 
 

@@ -42,9 +42,9 @@ extern "C" {
 
 struct flash_area;
 
-#define IMAGE_MAGIC                 0x96f3b83d
-#define IMAGE_MAGIC_V1              0x96f3b83c
-#define IMAGE_MAGIC_NONE            0xffffffff
+#define IMAGE_MAGIC                 0x96F3B83D
+#define IMAGE_MAGIC_V1              0x96F3B83C
+#define IMAGE_MAGIC_NONE            0xFFFFFFFF
 #define IMAGE_TLV_INFO_MAGIC        0x6907
 #define IMAGE_TLV_PROT_INFO_MAGIC   0x6908
 
@@ -54,22 +54,22 @@ struct flash_area;
 /*
  * Image header flags.
  */
-#define IMAGE_F_PIC                      0x00000001 /* Not supported. */
-#define IMAGE_F_ENCRYPTED_AES128         0x00000004 /* Encrypted using AES128. */
-#define IMAGE_F_ENCRYPTED_AES256         0x00000008 /* Encrypted using AES256. */
-#define IMAGE_F_NON_BOOTABLE             0x00000010 /* Split image app. */
+#define IMAGE_F_PIC                 0x00000001 /* Not supported. */
+#define IMAGE_F_ENCRYPTED_AES128    0x00000004 /* Encrypted using AES128. */
+#define IMAGE_F_ENCRYPTED_AES256    0x00000008 /* Encrypted using AES256. */
+#define IMAGE_F_NON_BOOTABLE        0x00000010 /* Split image app. */
 /*
  * Indicates that this image should be loaded into RAM instead of run
  * directly from flash.  The address to load should be in the
  * ih_load_addr field of the header.
  */
-#define IMAGE_F_RAM_LOAD                 0x00000020
+#define IMAGE_F_RAM_LOAD            0x00000020
 
 /*
  * Indicates that ih_load_addr stores information on flash/ROM address the
  * image has been built for.
  */
-#define IMAGE_F_ROM_FIXED                0x00000100
+#define IMAGE_F_ROM_FIXED           0x00000100
 
 /*
  * Flags that indicate if the image data is compressed
@@ -120,28 +120,28 @@ struct flash_area;
                                             * the format and size of the raw slot (compressed)
                                             * signature
                                             */
-					   /*
-					    * vendor reserved TLVs at xxA0-xxFF,
-					    * where xx denotes the upper byte
-					    * range.  Examples:
-					    * 0x00a0 - 0x00ff
-					    * 0x01a0 - 0x01ff
-					    * 0x02a0 - 0x02ff
-					    * ...
-					    * 0xffa0 - 0xfffe
-					    */
-#define IMAGE_TLV_ANY               0xffff /* Used to iterate over all TLV */
+                       /*
+                        * vendor reserved TLVs at xxA0-xxFF,
+                        * where xx denotes the upper byte
+                        * range.  Examples:
+                        * 0x00A0 - 0x00FF
+                        * 0x01A0 - 0x01FF
+                        * 0x02A0 - 0x02FF
+                        * ...
+                        * 0xFFA0 - 0xFFFE
+                        */
+#define IMAGE_TLV_ANY               0xFFFF /* Used to iterate over all TLV */
 
 struct image_version {
-    uint8_t iv_major;
-    uint8_t iv_minor;
+    uint8_t  iv_major;
+    uint8_t  iv_minor;
     uint16_t iv_revision;
     uint32_t iv_build_num;
 } __packed;
 
 struct image_dependency {
-    uint8_t image_id;                       /* Image index (from 0) */
-    uint8_t _pad1;
+    uint8_t  image_id;                      /* Image index (from 0) */
+    uint8_t  _pad1;
     uint16_t _pad2;
     struct image_version image_min_version; /* Indicates at minimum which
                                              * version of firmware must be
@@ -153,10 +153,10 @@ struct image_dependency {
 struct image_header {
     uint32_t ih_magic;
     uint32_t ih_load_addr;
-    uint16_t ih_hdr_size;           /* Size of image header (bytes). */
-    uint16_t ih_protect_tlv_size;   /* Size of protected TLV area (bytes). */
-    uint32_t ih_img_size;           /* Does not include header. */
-    uint32_t ih_flags;              /* IMAGE_F_[...]. */
+    uint16_t ih_hdr_size;                   /* Size of image header (bytes). */
+    uint16_t ih_protect_tlv_size;           /* Size of protected TLV area (bytes). */
+    uint32_t ih_img_size;                   /* Does not include header. */
+    uint32_t ih_flags;                      /* IMAGE_F_[...]. */
     struct image_version ih_ver;
     uint32_t _pad1;
 } __packed;
@@ -164,18 +164,18 @@ struct image_header {
 /** Image TLV header.  All fields in little endian. */
 struct image_tlv_info {
     uint16_t it_magic;
-    uint16_t it_tlv_tot;  /* size of TLV area (including tlv_info header) */
+    uint16_t it_tlv_tot;                    /* size of TLV area (including tlv_info header) */
 } __packed;
 
 /** Image trailer TLV format. All fields in little endian. */
 struct image_tlv {
-    uint16_t it_type;   /* IMAGE_TLV_[...]. */
-    uint16_t it_len;    /* Data length (not including TLV header). */
+    uint16_t it_type;                       /* IMAGE_TLV_[...]. */
+    uint16_t it_len;                        /* Data length (not including TLV header). */
 } __packed;
 
-#define ENCRYPTIONFLAGS (IMAGE_F_ENCRYPTED_AES128 | IMAGE_F_ENCRYPTED_AES256)
-#define IS_ENCRYPTED(hdr) (((hdr)->ih_flags & IMAGE_F_ENCRYPTED_AES128) \
-                        || ((hdr)->ih_flags & IMAGE_F_ENCRYPTED_AES256))
+#define ENCRYPTIONFLAGS     (IMAGE_F_ENCRYPTED_AES128 | IMAGE_F_ENCRYPTED_AES256)
+#define IS_ENCRYPTED(hdr)   (((hdr)->ih_flags & IMAGE_F_ENCRYPTED_AES128) || \
+                             ((hdr)->ih_flags & IMAGE_F_ENCRYPTED_AES256))
 #define MUST_DECRYPT(fap, idx, hdr) \
     (flash_area_get_id(fap) == FLASH_AREA_IMAGE_SECONDARY(idx) && IS_ENCRYPTED(hdr))
 
@@ -189,15 +189,15 @@ _Static_assert(sizeof(struct image_header) == IMAGE_HEADER_SIZE,
                "struct image_header not required size");
 
 struct enc_key_data;
-fih_ret bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
-                              struct image_header *hdr,
-                              const struct flash_area *fap,
-                              uint8_t *tmp_buf, uint32_t tmp_buf_sz,
-                              uint8_t *seed, int seed_len, uint8_t *out_hash);
+fih_ret bootutil_img_validate(struct enc_key_data* enc_state, int image_index,
+                              struct image_header* hdr,
+                              const struct flash_area* fap,
+                              uint8_t* tmp_buf, uint32_t tmp_buf_sz,
+                              uint8_t* seed, int seed_len, uint8_t* out_hash);
 
 struct image_tlv_iter {
-    const struct image_header *hdr;
-    const struct flash_area *fap;
+    const struct image_header* hdr;
+    const struct flash_area* fap;
     uint16_t type;
     bool prot;
     uint32_t prot_end;
@@ -205,17 +205,17 @@ struct image_tlv_iter {
     uint32_t tlv_end;
 };
 
-int bootutil_tlv_iter_begin(struct image_tlv_iter *it,
-                            const struct image_header *hdr,
-                            const struct flash_area *fap, uint16_t type,
+int bootutil_tlv_iter_begin(struct image_tlv_iter* it,
+                            const struct image_header* hdr,
+                            const struct flash_area* fap, uint16_t type,
                             bool prot);
-int bootutil_tlv_iter_next(struct image_tlv_iter *it, uint32_t *off,
-                           uint16_t *len, uint16_t *type);
+int bootutil_tlv_iter_next(struct image_tlv_iter* it, uint32_t* off,
+                           uint16_t* len, uint16_t* type);
 int bootutil_tlv_iter_is_prot(struct image_tlv_iter *it, uint32_t off);
 
-int32_t bootutil_get_img_security_cnt(struct image_header *hdr,
-                                      const struct flash_area *fap,
-                                      uint32_t *security_cnt);
+int32_t bootutil_get_img_security_cnt(struct image_header* hdr,
+                                      const struct flash_area* fap,
+                                      uint32_t* security_cnt);
 
 #ifdef __cplusplus
 }
