@@ -14,12 +14,12 @@
 
 #ifdef CONFIG_BOOT_SIGNATURE_TYPE_RSA
 #define MCUBOOT_SIGN_RSA
-#  if (CONFIG_BOOT_SIGNATURE_TYPE_RSA_LEN != 2048 && \
-       CONFIG_BOOT_SIGNATURE_TYPE_RSA_LEN != 3072)
-#    error "Invalid RSA key size (must be 2048 or 3072)"
-#  else
-#    define MCUBOOT_SIGN_RSA_LEN CONFIG_BOOT_SIGNATURE_TYPE_RSA_LEN
-#  endif
+#if ((CONFIG_BOOT_SIGNATURE_TYPE_RSA_LEN != 2048) && \
+     (CONFIG_BOOT_SIGNATURE_TYPE_RSA_LEN != 3072))
+#error "Invalid RSA key size (must be 2048 or 3072)"
+#else
+#define MCUBOOT_SIGN_RSA_LEN CONFIG_BOOT_SIGNATURE_TYPE_RSA_LEN
+#endif
 #elif defined(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256)
 #define MCUBOOT_SIGN_EC256
 #elif defined(CONFIG_BOOT_SIGNATURE_TYPE_ED25519)
@@ -27,11 +27,11 @@
 #endif
 
 #if defined(CONFIG_BOOT_USE_TINYCRYPT)
-#  if defined(CONFIG_MBEDTLS) || defined(CONFIG_BOOT_USE_CC310)
-#     error "One crypto library implementation allowed at a time."
-#  endif
-#elif defined(CONFIG_MBEDTLS) && defined(CONFIG_BOOT_USE_CC310)
-#     error "One crypto library implementation allowed at a time."
+#if (defined(CONFIG_MBEDTLS) || defined(CONFIG_BOOT_USE_CC310))
+#error "One crypto library implementation allowed at a time."
+#endif
+#elif (defined(CONFIG_MBEDTLS) && defined(CONFIG_BOOT_USE_CC310))
+#error "One crypto library implementation allowed at a time."
 #endif
 
 #ifdef CONFIG_BOOT_USE_MBEDTLS
@@ -83,9 +83,9 @@
 #endif
 
 #ifdef CONFIG_BOOT_RAM_LOAD
-#define MCUBOOT_RAM_LOAD 1
-#define IMAGE_EXECUTABLE_RAM_START CONFIG_BOOT_IMAGE_EXECUTABLE_RAM_START
-#define IMAGE_EXECUTABLE_RAM_SIZE CONFIG_BOOT_IMAGE_EXECUTABLE_RAM_SIZE
+#define MCUBOOT_RAM_LOAD        1
+#define IMAGE_EXECUTABLE_RAM_START  CONFIG_BOOT_IMAGE_EXECUTABLE_RAM_START
+#define IMAGE_EXECUTABLE_RAM_SIZE   CONFIG_BOOT_IMAGE_EXECUTABLE_RAM_SIZE
 #endif
 
 #ifdef CONFIG_BOOT_FIRMWARE_LOADER
@@ -103,13 +103,13 @@
 #endif
 
 #ifdef CONFIG_BOOT_SWAP_SAVE_ENCTLV
-#define MCUBOOT_SWAP_SAVE_ENCTLV 1
+#define MCUBOOT_SWAP_SAVE_ENCTLV    1
 #endif
 
 #endif /* CONFIG_SINGLE_APPLICATION_SLOT */
 
 #ifdef CONFIG_LOG
-#define MCUBOOT_HAVE_LOGGING 1
+#define MCUBOOT_HAVE_LOGGING    1
 #endif
 
 #ifdef CONFIG_BOOT_ENCRYPT_RSA
@@ -132,11 +132,11 @@
 #endif
 
 #ifdef CONFIG_BOOT_BOOTSTRAP
-#define MCUBOOT_BOOTSTRAP 1
+#define MCUBOOT_BOOTSTRAP       1
 #endif
 
 #ifdef CONFIG_BOOT_USE_BENCH
-#define MCUBOOT_USE_BENCH 1
+#define MCUBOOT_USE_BENCH       1
 #endif
 
 #ifdef CONFIG_MCUBOOT_DOWNGRADE_PREVENTION
@@ -144,11 +144,11 @@
 /* MCUBOOT_DOWNGRADE_PREVENTION_SECURITY_COUNTER is used later as bool value so it is
  * always defined, (unlike MCUBOOT_DOWNGRADE_PREVENTION which is only used in
  * preprocessor condition and my be not defined) */
-#  ifdef CONFIG_MCUBOOT_DOWNGRADE_PREVENTION_SECURITY_COUNTER
-#    define MCUBOOT_DOWNGRADE_PREVENTION_SECURITY_COUNTER 1
-#  else
-#    define MCUBOOT_DOWNGRADE_PREVENTION_SECURITY_COUNTER 0
-#  endif
+#ifdef CONFIG_MCUBOOT_DOWNGRADE_PREVENTION_SECURITY_COUNTER
+#define MCUBOOT_DOWNGRADE_PREVENTION_SECURITY_COUNTER   1
+#else
+#define MCUBOOT_DOWNGRADE_PREVENTION_SECURITY_COUNTER   0
+#endif
 #endif
 
 #ifdef CONFIG_MCUBOOT_HW_DOWNGRADE_PREVENTION
@@ -172,7 +172,7 @@
 #endif
 
 #ifdef CONFIG_MEASURED_BOOT_MAX_CBOR_SIZE
-#define MAX_BOOT_RECORD_SZ CONFIG_MEASURED_BOOT_MAX_CBOR_SIZE
+#define MAX_BOOT_RECORD_SZ  CONFIG_MEASURED_BOOT_MAX_CBOR_SIZE
 #endif
 
 #ifdef CONFIG_BOOT_FIH_PROFILE_OFF
@@ -192,9 +192,9 @@
 #endif
 
 #ifdef CONFIG_ENABLE_MGMT_PERUSER
-#define MCUBOOT_PERUSER_MGMT_GROUP_ENABLED 1
+#define MCUBOOT_PERUSER_MGMT_GROUP_ENABLED  1
 #else
-#define MCUBOOT_PERUSER_MGMT_GROUP_ENABLED 0
+#define MCUBOOT_PERUSER_MGMT_GROUP_ENABLED  0
 #endif
 
 #ifdef CONFIG_BOOT_MGMT_CUSTOM_IMG_LIST
@@ -273,9 +273,9 @@
 
 #if (defined(CONFIG_BOOT_USB_DFU_WAIT) || \
      defined(CONFIG_BOOT_USB_DFU_GPIO))
-#  ifndef CONFIG_MULTITHREADING
-#    error "USB DFU Requires MULTITHREADING"
-#  endif
+#ifndef CONFIG_MULTITHREADING
+#error "USB DFU Requires MULTITHREADING"
+#endif
 #endif
 
 #if defined(CONFIG_BOOT_MAX_IMG_SECTORS_AUTO) && defined(MIN_SECTOR_COUNT)
@@ -287,32 +287,31 @@
 #define MCUBOOT_MAX_IMG_SECTORS       CONFIG_BOOT_MAX_IMG_SECTORS
 
 #else
-#define MCUBOOT_MAX_IMG_SECTORS       128
+#define MCUBOOT_MAX_IMG_SECTORS     128
 #endif
 
 #ifdef CONFIG_BOOT_SERIAL_MAX_RECEIVE_SIZE
-#define MCUBOOT_SERIAL_MAX_RECEIVE_SIZE CONFIG_BOOT_SERIAL_MAX_RECEIVE_SIZE
+#define MCUBOOT_SERIAL_MAX_RECEIVE_SIZE         CONFIG_BOOT_SERIAL_MAX_RECEIVE_SIZE
 #endif
 
 #ifdef CONFIG_BOOT_SERIAL_UNALIGNED_BUFFER_SIZE
-#define MCUBOOT_SERIAL_UNALIGNED_BUFFER_SIZE CONFIG_BOOT_SERIAL_UNALIGNED_BUFFER_SIZE
+#define MCUBOOT_SERIAL_UNALIGNED_BUFFER_SIZE    CONFIG_BOOT_SERIAL_UNALIGNED_BUFFER_SIZE
 #endif
 
-#if defined(MCUBOOT_DATA_SHARING) && defined(ZEPHYR_VER_INCLUDE)
+#if (defined(MCUBOOT_DATA_SHARING) && defined(ZEPHYR_VER_INCLUDE))
 #include <zephyr/app_version.h>
 
 #define MCUBOOT_VERSION_AVAILABLE
-#define MCUBOOT_VERSION_MAJOR APP_VERSION_MAJOR
-#define MCUBOOT_VERSION_MINOR APP_VERSION_MINOR
-#define MCUBOOT_VERSION_PATCHLEVEL APP_PATCHLEVEL
+#define MCUBOOT_VERSION_MAJOR       APP_VERSION_MAJOR
+#define MCUBOOT_VERSION_MINOR       APP_VERSION_MINOR
+#define MCUBOOT_VERSION_PATCHLEVEL  APP_PATCHLEVEL
 #endif
 
 /* Support 32-byte aligned flash sizes */
 #if DT_HAS_CHOSEN(zephyr_flash)
-    #if DT_PROP_OR(DT_CHOSEN(zephyr_flash), write_block_size, 0) > 8
-        #define MCUBOOT_BOOT_MAX_ALIGN \
-            DT_PROP(DT_CHOSEN(zephyr_flash), write_block_size)
-    #endif
+#if DT_PROP_OR(DT_CHOSEN(zephyr_flash), write_block_size, 0) > 8
+#define MCUBOOT_BOOT_MAX_ALIGN      DT_PROP(DT_CHOSEN(zephyr_flash), write_block_size)
+#endif
 #endif
 
 #ifdef CONFIG_MCUBOOT_BOOTUTIL_LIB_FOR_DIRECT_XIP
@@ -323,20 +322,19 @@
 #if CONFIG_NRFX_WDT
 #include <nrfx_wdt.h>
 
-#define FEED_WDT_INST(id)                                    \
-    do {                                                     \
-        nrfx_wdt_t wdt_inst_##id = NRFX_WDT_INSTANCE(id);    \
-        for (uint8_t i = 0; i < NRF_WDT_CHANNEL_NUMBER; i++) \
-        {                                                    \
-            nrf_wdt_reload_request_set(wdt_inst_##id.p_reg,  \
-                (nrf_wdt_rr_register_t)(NRF_WDT_RR0 + i));   \
-        }                                                    \
+#define FEED_WDT_INST(id)                   \
+    do {                                    \
+        nrfx_wdt_t wdt_inst_##id = NRFX_WDT_INSTANCE(id);       \
+        for (uint8_t i = 0; i < NRF_WDT_CHANNEL_NUMBER; i++) {  \
+            nrf_wdt_reload_request_set(wdt_inst_##id.p_reg,     \
+                    (nrf_wdt_rr_register_t)(NRF_WDT_RR0 + i));  \
+        }                                   \
     } while (0)
-#if defined(CONFIG_NRFX_WDT0) && defined(CONFIG_NRFX_WDT1)
-#define MCUBOOT_WATCHDOG_FEED() \
-    do {                        \
-        FEED_WDT_INST(0);       \
-        FEED_WDT_INST(1);       \
+#if (defined(CONFIG_NRFX_WDT0) && defined(CONFIG_NRFX_WDT1))
+#define MCUBOOT_WATCHDOG_FEED()             \
+    do {                                    \
+        FEED_WDT_INST(0);                   \
+        FEED_WDT_INST(1);                   \
     } while (0)
 #elif defined(CONFIG_NRFX_WDT0)
 #define MCUBOOT_WATCHDOG_FEED() \
@@ -361,33 +359,33 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/watchdog.h>
 
-#define MCUBOOT_WATCHDOG_SETUP()                              \
-    do {                                                      \
-        const struct device* wdt =                            \
-            DEVICE_DT_GET(DT_ALIAS(watchdog0));               \
-        if (device_is_ready(wdt)) {                           \
-            wdt_setup(wdt, 0);                                \
-        }                                                     \
+#define MCUBOOT_WATCHDOG_SETUP()            \
+    do {                                    \
+        const struct device* wdt = DEVICE_DT_GET(DT_ALIAS(watchdog0));  \
+        if (device_is_ready(wdt)) {         \
+            wdt_setup(wdt, 0);              \
+        }                                   \
     } while (0)
 
-#define MCUBOOT_WATCHDOG_FEED()                               \
-    do {                                                      \
-        const struct device* wdt =                            \
-            DEVICE_DT_GET(DT_ALIAS(watchdog0));               \
-        if (device_is_ready(wdt)) {                           \
-            wdt_feed(wdt, 0);                                 \
-        }                                                     \
+#define MCUBOOT_WATCHDOG_FEED()             \
+    do {                                    \
+        const struct device* wdt = DEVICE_DT_GET(DT_ALIAS(watchdog0));  \
+        if (device_is_ready(wdt)) {         \
+            wdt_feed(wdt, 0);               \
+        }                                   \
     } while (0)
 #else /* DT_NODE_HAS_STATUS(DT_ALIAS(watchdog0), okay) */
 /* No vendor implementation, no-op for historical reasons */
-#define MCUBOOT_WATCHDOG_FEED()         \
-    do {                                \
+#define MCUBOOT_WATCHDOG_FEED()             \
+    do {                                    \
+        /* pass */                          \
     } while (0)
 #endif
-#else  /* CONFIG_BOOT_WATCHDOG_FEED */
+#else /* CONFIG_BOOT_WATCHDOG_FEED */
 /* Not enabled, no feed activity */
-#define MCUBOOT_WATCHDOG_FEED()         \
-    do {                                \
+#define MCUBOOT_WATCHDOG_FEED()             \
+    do {                                    \
+        /* pass */                          \
     } while (0)
 
 #endif /* CONFIG_BOOT_WATCHDOG_FEED */
@@ -396,9 +394,9 @@
 #define MCUBOOT_WATCHDOG_SETUP()
 #endif
 
-#define MCUBOOT_CPU_IDLE() \
-  if (!IS_ENABLED(CONFIG_MULTITHREADING)) { \
-    k_cpu_idle(); \
-  }
+#define MCUBOOT_CPU_IDLE()                  \
+    if (!IS_ENABLED(CONFIG_MULTITHREADING)) { \
+        k_cpu_idle();                       \
+    }
 
 #endif /* __MCUBOOT_CONFIG_H__ */
