@@ -48,11 +48,7 @@ endif()
 
 zephyr_library_include_directories(
   include
-  targets
   )
-if(EXISTS targets/${BOARD}.h)
-  zephyr_library_compile_definitions(MCUBOOT_TARGET_CONFIG="${BOARD}.h")
-endif()
 
 # Zephyr port-specific sources.
 zephyr_library_sources(
@@ -372,20 +368,50 @@ function(dt_get_parent node)
   string(FIND "${${node}}" "/" pos REVERSE)
 
   if(pos EQUAL -1)
-    message(ERROR "Unable to get parent of node: ${${node}}")
+    message(FATAL_ERROR "Unable to get parent of node: ${${node}}")
   endif()
 
   string(SUBSTRING "${${node}}" 0 ${pos} ${node})
   set(${node} "${${node}}" PARENT_SCOPE)
 endfunction()
 
-if(CONFIG_BOOT_MAX_IMG_SECTORS_AUTO)
-  dt_nodelabel(slot0_flash NODELABEL "slot0_partition")
-  dt_prop(slot0_size PATH "${slot0_flash}" PROPERTY "reg" INDEX 1)
-  dt_get_parent(slot0_flash)
-  dt_get_parent(slot0_flash)
-  dt_prop(erase_size_slot0 PATH "${slot0_flash}" PROPERTY "erase-block-size")
+dt_nodelabel(slot0_flash NODELABEL "slot0_partition")
+dt_prop(slot0_size PATH "${slot0_flash}" PROPERTY "reg" INDEX 1)
+dt_get_parent(slot0_flash)
+dt_get_parent(slot0_flash)
+dt_prop(erase_size_slot0 PATH "${slot0_flash}" PROPERTY "erase-block-size")
+dt_prop(write_size_slot0 PATH "${slot0_flash}" PROPERTY "write-block-size")
 
+if(CONFIG_BOOT_SWAP_USING_MOVE)
+  if(DEFINED erase_size_slot0)
+    zephyr_compile_definitions("MCUBOOT_SLOT0_EXPECTED_ERASE_SIZE=${erase_size_slot0}")
+  endif()
+
+  if(DEFINED write_size_slot0)
+    zephyr_compile_definitions("MCUBOOT_SLOT0_EXPECTED_WRITE_SIZE=${write_size_slot0}")
+  endif()
+endif()
+
+if(NOT CONFIG_SINGLE_APPLICATION_SLOT)
+  dt_nodelabel(slot1_flash NODELABEL "slot1_partition")
+  dt_prop(slot1_size PATH "${slot1_flash}" PROPERTY "reg" INDEX 1)
+  dt_get_parent(slot1_flash)
+  dt_get_parent(slot1_flash)
+  dt_prop(erase_size_slot1 PATH "${slot1_flash}" PROPERTY "erase-block-size")
+  dt_prop(write_size_slot1 PATH "${slot1_flash}" PROPERTY "write-block-size")
+
+  if(CONFIG_BOOT_SWAP_USING_MOVE)
+    if(DEFINED erase_size_slot1)
+      zephyr_compile_definitions("MCUBOOT_SLOT1_EXPECTED_ERASE_SIZE=${erase_size_slot1}")
+    endif()
+
+    if(DEFINED write_size_slot1)
+      zephyr_compile_definitions("MCUBOOT_SLOT1_EXPECTED_WRITE_SIZE=${write_size_slot1}")
+    endif()
+  endif()
+endif()
+
+if(CONFIG_BOOT_MAX_IMG_SECTORS_AUTO)
   if(NOT DEFINED slot0_size)
     message(WARNING "Unable to determine size of slot0 partition, cannot calculate minimum sector usage")
   elseif(NOT DEFINED erase_size_slot0)
@@ -395,12 +421,6 @@ if(CONFIG_BOOT_MAX_IMG_SECTORS_AUTO)
   endif()
 
   if(NOT CONFIG_SINGLE_APPLICATION_SLOT)
-    dt_nodelabel(slot1_flash NODELABEL "slot1_partition")
-    dt_prop(slot1_size PATH "${slot1_flash}" PROPERTY "reg" INDEX 1)
-    dt_get_parent(slot1_flash)
-    dt_get_parent(slot1_flash)
-    dt_prop(erase_size_slot1 PATH "${slot1_flash}" PROPERTY "erase-block-size")
-
     if(NOT DEFINED slot1_size)
       message(WARNING "Unable to determine size of slot1 partition, cannot calculate minimum sector usage")
     elseif(NOT DEFINED erase_size_slot1)
@@ -420,6 +440,10 @@ if(CONFIG_BOOT_MAX_IMG_SECTORS_AUTO)
   else()
     message(WARNING "Unable to calculate minimum number of sector sizes, falling back to 128 sector default. Please disable CONFIG_BOOT_MAX_IMG_SECTORS_AUTO and set CONFIG_BOOT_MAX_IMG_SECTORS to the required value")
   endif()
+endif()
+
+if((CONFIG_BOOT_SWAP_USING_SCRATCH OR CONFIG_BOOT_SWAP_USING_MOVE) AND (DEFINED write_size_slot0 OR DEFINED write_size_slot1))
+  zephyr_library_sources(flash_check.c)
 endif()
 
 if(SYSBUILD)

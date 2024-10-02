@@ -43,6 +43,16 @@
 #ifdef CONFIG_BOOT_USE_NRF_CC310_BL
 #define MCUBOOT_USE_NRF_CC310_BL
 #endif
+#elif defined(CONFIG_MBEDTLS_PSA_CRYPTO_CLIENT)
+#define MCUBOOT_USE_PSA_CRYPTO
+#endif
+
+#ifdef CONFIG_BOOT_IMG_HASH_ALG_SHA512
+#define MCUBOOT_SHA512
+#endif
+
+#ifdef CONFIG_BOOT_IMG_HASH_ALG_SHA256
+#define MCUBOOT_SHA256
 #endif
 
 /* Zephyr, regardless of C library used, provides snprintf */
@@ -319,7 +329,7 @@
 #endif
 
 #if CONFIG_BOOT_WATCHDOG_FEED
-#if CONFIG_NRFX_WDT
+#if CONFIG_BOOT_WATCHDOG_FEED_NRFX_WDT
 #include <nrfx_wdt.h>
 
 #define FEED_WDT_INST(id)                   \
@@ -355,7 +365,7 @@
 #error "No NRFX WDT instances enabled"
 #endif
 
-#elif DT_NODE_HAS_STATUS(DT_ALIAS(watchdog0), okay) /* CONFIG_NRFX_WDT */
+#elif DT_NODE_HAS_STATUS(DT_ALIAS(watchdog0), okay) /* CONFIG_BOOT_WATCHDOG_FEED_NRFX_WDT */
 #include <zephyr/device.h>
 #include <zephyr/drivers/watchdog.h>
 
