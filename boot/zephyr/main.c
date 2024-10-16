@@ -390,7 +390,8 @@ void zephyr_boot_log_stop(void) {
         * !defined(CONFIG_LOG_PROCESS_THREAD) && !defined(ZEPHYR_LOG_MODE_MINIMAL)
         */
 
-#ifdef CONFIG_MCUBOOT_SERIAL
+#if defined(CONFIG_BOOT_SERIAL_ENTRANCE_GPIO) || defined(CONFIG_BOOT_SERIAL_PIN_RESET) \
+    || defined(CONFIG_BOOT_SERIAL_BOOT_MODE) || defined(CONFIG_BOOT_SERIAL_NO_APPLICATION)
 static void boot_serial_enter(void) {
     int rc;
 
@@ -553,6 +554,10 @@ int /**/main(void) {
     BOOT_LOG_INF("Bootloader chainload address offset: 0x%x",
                  rsp.br_image_off);
 #endif
+
+    BOOT_LOG_INF("Image version: v%d.%d.%d", rsp.br_hdr->ih_ver.iv_major,
+                                             rsp.br_hdr->ih_ver.iv_minor,
+                                             rsp.br_hdr->ih_ver.iv_revision);
 
     #if defined(MCUBOOT_DIRECT_XIP)
     BOOT_LOG_INF("Jumping to the image slot");
