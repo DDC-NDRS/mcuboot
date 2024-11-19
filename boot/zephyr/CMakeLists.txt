@@ -123,7 +123,7 @@ zephyr_library_sources(
   )
 endif()
 
-if(CONFIG_SINGLE_APPLICATION_SLOT)
+if(CONFIG_SINGLE_APPLICATION_SLOT OR CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
 zephyr_library_sources(
   ${BOOT_DIR}/zephyr/single_loader.c
   )
@@ -141,6 +141,12 @@ zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/swap_move.c
   ${BOOT_DIR}/bootutil/src/caps.c
   )
+endif()
+
+if(CONFIG_BOOT_RAM_LOAD OR CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
+  zephyr_library_sources(
+    ${BOOT_DIR}/bootutil/src/ram_load.c
+    )
 endif()
 
 if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
@@ -293,6 +299,21 @@ if(NOT CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
   endif()
   message("MCUBoot bootloader key file: ${KEY_FILE}")
 
+  set(mcuboot_default_signature_files
+      ${MCUBOOT_DIR}/root-ec-p256-pkcs8.pem
+      ${MCUBOOT_DIR}/root-ec-p384.pem
+      ${MCUBOOT_DIR}/root-ec-p384-pkcs8.pem
+      ${MCUBOOT_DIR}/root-ed25519.pem
+      ${MCUBOOT_DIR}/root-rsa-2048.pem
+      ${MCUBOOT_DIR}/root-rsa-3072.pem
+      ${MCUBOOT_DIR}/root-ec-p256.pem
+  )
+
+  # Emit a warning if using one of the default MCUboot key files
+  if(${KEY_FILE} IN_LIST mcuboot_default_signature_files)
+    message(WARNING "WARNING: Using default MCUboot signing key file, this file is for debug use only and is not secure!")
+  endif()
+
   set(GENERATED_PUBKEY ${ZEPHYR_BINARY_DIR}/autogen-pubkey.c)
   add_custom_command(
     OUTPUT ${GENERATED_PUBKEY}
@@ -332,6 +353,20 @@ if(CONFIG_BOOT_ENCRYPTION_KEY_FILE AND NOT CONFIG_BOOT_ENCRYPTION_KEY_FILE STREQ
     set(KEY_FILE ${MCUBOOT_DIR}/${CONFIG_BOOT_ENCRYPTION_KEY_FILE})
   endif()
   message("MCUBoot bootloader encryption key file: ${KEY_FILE}")
+
+  # Emit a warning if using one of the default MCUboot key files
+  set(mcuboot_default_encryption_files
+      ${MCUBOOT_DIR}/enc-ec256-priv.pem
+      ${MCUBOOT_DIR}/enc-ec256-pub.pem
+      ${MCUBOOT_DIR}/enc-rsa2048-priv.pem
+      ${MCUBOOT_DIR}/enc-rsa2048-pub.pem
+      ${MCUBOOT_DIR}/enc-x25519-priv.pem
+      ${MCUBOOT_DIR}/enc-x25519-pub.pem
+  )
+
+  if(${KEY_FILE} IN_LIST mcuboot_default_encryption_files)
+    message(WARNING "WARNING: Using default MCUboot encryption key file, this file is for debug use only and is not secure!")
+  endif()
 
   set(GENERATED_ENCKEY ${ZEPHYR_BINARY_DIR}/autogen-enckey.c)
   add_custom_command(
@@ -392,7 +427,7 @@ if(CONFIG_BOOT_SWAP_USING_MOVE)
   endif()
 endif()
 
-if(NOT CONFIG_SINGLE_APPLICATION_SLOT)
+if(NOT CONFIG_SINGLE_APPLICATION_SLOT AND NOT CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
   dt_nodelabel(slot1_flash NODELABEL "slot1_partition")
   dt_prop(slot1_size PATH "${slot1_flash}" PROPERTY "reg" INDEX 1)
   dt_get_parent(slot1_flash)
@@ -420,7 +455,7 @@ if(CONFIG_BOOT_MAX_IMG_SECTORS_AUTO)
     math(EXPR slot_min_sectors "${slot0_size} / ${erase_size_slot0}")
   endif()
 
-  if(NOT CONFIG_SINGLE_APPLICATION_SLOT)
+  if(NOT CONFIG_SINGLE_APPLICATION_SLOT AND NOT CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
     if(NOT DEFINED slot1_size)
       message(WARNING "Unable to determine size of slot1 partition, cannot calculate minimum sector usage")
     elseif(NOT DEFINED erase_size_slot1)
@@ -565,7 +600,12 @@ if(SYSBUILD)
       if(CONFIG_BOOT_MAX_IMG_SECTORS_AUTO AND DEFINED slot_min_sectors AND "${slot_min_sectors}" GREATER "0")
         math(EXPR boot_status_data_size "${slot_min_sectors} * (3 * ${write_size})")
       else()
-        math(EXPR boot_status_data_size "${CONFIG_BOOT_MAX_IMG_SECTORS} * (3 * ${write_size})")
+        if(CONFIG_BOOT_MAX_IMG_SECTORS)
+          math(EXPR boot_status_data_size "${CONFIG_BOOT_MAX_IMG_SECTORS} * (3 * ${write_size})")
+        else()
+          message(WARNING "CONFIG_BOOT_MAX_IMG_SECTORS is not defined, falling back to 128 sector default. Please set CONFIG_BOOT_MAX_IMG_SECTORS to the required value")
+          math(EXPR boot_status_data_size "128 * (3 * ${write_size})")
+        endif()
       endif()
     else()
       set(boot_status_data_size 0)
