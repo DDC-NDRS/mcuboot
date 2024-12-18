@@ -1943,10 +1943,21 @@ static void boot_prepare_image_for_update(struct boot_loader_state* state,
             assert(rc == 0);
             #endif
 
-            /* Attempt to read an image header from each slot. Ensure that
-             * image headers in slots are aligned with headers in boot_data.
+            /* Attempt to read an image header from each slot. Ensure that image headers in slots
+             * are aligned with headers in boot_data.
+             *
+             * The boot status (last param) is used to figure out in which slot the header of each
+             * image is currently located. This is useful as in the middle of an upgrade process,
+             * the header of a given image could have already been moved to the other slot. However,
+             * providing it at the end of the upgrade, as it is the case here, would cause the
+             * reading of the header of the primary image from the secondary slot and the secondary
+             * image from the primary slot, since the images have been swapped. That's not what we
+             * want here, since the goal is to upgrade the bootloader state to reflect the new state
+             * of the slots: the image headers in the primary and secondary slots must now
+             * respectively be the headers of the new and previous active image. So NULL is provided
+             * as boot status.
              */
-            rc = boot_read_image_headers(state, false, bs);
+            rc = boot_read_image_headers(state, false, NULL);
             assert(rc == 0);
 
             /* Swap has finished set to NONE */
@@ -2223,7 +2234,9 @@ fih_ret /**/context_boot_go(struct boot_loader_state* state, struct boot_rsp* rs
     #endif
 
     /* Trigger status change callback with upgrading status */
-    mcuboot_status_change(MCUBOOT_STATUS_UPGRADING);            /* MCUBOOT_SEQ07 */
+    if (has_upgrade) {
+        mcuboot_status_change(MCUBOOT_STATUS_UPGRADING);        /* MCUBOOT_SEQ07 */
+    }
 
     /* Iterate over all the images. At this point there are no aborted swaps
      * and the swap types are determined for each image. By the end of the loop
@@ -2321,11 +2334,11 @@ fih_ret /**/context_boot_go(struct boot_loader_state* state, struct boot_rsp* rs
         if (BOOT_SWAP_TYPE(state) != BOOT_SWAP_TYPE_NONE) {
             /* Attempt to read an image header from each slot. Ensure that image
              * headers in slots are aligned with headers in boot_data.
-         * Note: Quite complicated internal logic of boot_read_image_headers
-         * uses boot state, the last parm, to figure out in which slot which
-         * header is located; when boot state is not provided, then it
-         * is assumed that headers are at proper slots (we are not in
-         * the middle of moving images, etc).
+             * Note: Quite complicated internal logic of boot_read_image_headers
+             * uses boot state, the last parm, to figure out in which slot which
+             * header is located; when boot state is not provided, then it
+             * is assumed that headers are at proper slots (we are not in
+             * the middle of moving images, etc).
              */
             rc = boot_read_image_headers(state, false, NULL);   /* MCUBOOT_SEQ14 */
             if (rc != 0) {
