@@ -4,7 +4,7 @@
  * Copyright (c) 2017-2019 Linaro LTD
  * Copyright (c) 2016-2019 JUUL Labs
  * Copyright (c) 2019-2023 Arm Limited
- * Copyright (c) 2020-2023 Nordic Semiconductor ASA
+ * Copyright (c) 2020-2025 Nordic Semiconductor ASA
  *
  * Original license:
  *
@@ -85,6 +85,9 @@ struct boot_swap_table {
     uint8_t image_ok_primary_slot;
     uint8_t image_ok_secondary_slot;
     uint8_t copy_done_primary_slot;
+    #if defined(MCUBOOT_SWAP_USING_OFFSET)
+    uint8_t copy_done_secondary_slot;
+    #endif
 
     uint8_t swap_type;
 };
@@ -101,30 +104,50 @@ struct boot_swap_table {
  * the bootloader, as in starting/finishing a swap operation.
  */
 static const struct boot_swap_table boot_swap_tables[] = {
+    #if defined(MCUBOOT_SWAP_USING_OFFSET)
     {
-        .magic_primary_slot      = BOOT_MAGIC_ANY,
-        .magic_secondary_slot    = BOOT_MAGIC_GOOD,
-        .image_ok_primary_slot   = BOOT_FLAG_ANY,
-        .image_ok_secondary_slot = BOOT_FLAG_UNSET,
-        .copy_done_primary_slot  = BOOT_FLAG_ANY,
-        .swap_type               = BOOT_SWAP_TYPE_TEST,
+        .magic_primary_slot       = BOOT_MAGIC_ANY,
+        .magic_secondary_slot     = BOOT_MAGIC_GOOD,
+        .image_ok_primary_slot    = BOOT_FLAG_ANY,
+        .image_ok_secondary_slot  = BOOT_FLAG_UNSET,
+        .copy_done_primary_slot   = BOOT_FLAG_ANY,
+        .copy_done_secondary_slot = BOOT_FLAG_SET,
+        .swap_type                = BOOT_SWAP_TYPE_REVERT,
+    },
+    #endif
+    {
+        .magic_primary_slot       = BOOT_MAGIC_ANY,
+        .magic_secondary_slot     = BOOT_MAGIC_GOOD,
+        .image_ok_primary_slot    = BOOT_FLAG_ANY,
+        .image_ok_secondary_slot  = BOOT_FLAG_UNSET,
+        .copy_done_primary_slot   = BOOT_FLAG_ANY,
+        #if defined(MCUBOOT_SWAP_USING_OFFSET)
+        .copy_done_secondary_slot = BOOT_FLAG_ANY,
+        #endif
+        .swap_type                = BOOT_SWAP_TYPE_TEST,
     },
     {
-        .magic_primary_slot      = BOOT_MAGIC_ANY,
-        .magic_secondary_slot    = BOOT_MAGIC_GOOD,
-        .image_ok_primary_slot   = BOOT_FLAG_ANY,
-        .image_ok_secondary_slot = BOOT_FLAG_SET,
-        .copy_done_primary_slot  = BOOT_FLAG_ANY,
-        .swap_type               = BOOT_SWAP_TYPE_PERM,
+        .magic_primary_slot       = BOOT_MAGIC_ANY,
+        .magic_secondary_slot     = BOOT_MAGIC_GOOD,
+        .image_ok_primary_slot    = BOOT_FLAG_ANY,
+        .image_ok_secondary_slot  = BOOT_FLAG_SET,
+        .copy_done_primary_slot   = BOOT_FLAG_ANY,
+        #if defined(MCUBOOT_SWAP_USING_OFFSET)
+        .copy_done_secondary_slot = BOOT_FLAG_ANY,
+        #endif
+        .swap_type                = BOOT_SWAP_TYPE_PERM,
     },
     {
-        .magic_primary_slot      = BOOT_MAGIC_GOOD,
-        .magic_secondary_slot    = BOOT_MAGIC_ANY,
-        .image_ok_primary_slot   = BOOT_FLAG_UNSET,
-        .image_ok_secondary_slot = BOOT_FLAG_ANY,
-        .copy_done_primary_slot  = BOOT_FLAG_SET,
-        .swap_type               = BOOT_SWAP_TYPE_REVERT,
-    }
+        .magic_primary_slot       = BOOT_MAGIC_GOOD,
+        .magic_secondary_slot     = BOOT_MAGIC_ANY,
+        .image_ok_primary_slot    = BOOT_FLAG_UNSET,
+        .image_ok_secondary_slot  = BOOT_FLAG_ANY,
+        .copy_done_primary_slot   = BOOT_FLAG_SET,
+        #if defined(MCUBOOT_SWAP_USING_OFFSET)
+        .copy_done_secondary_slot = BOOT_FLAG_ANY,
+        #endif
+        .swap_type                = BOOT_SWAP_TYPE_REVERT,
+    },
 };
 
 #define BOOT_SWAP_TABLES_COUNT \
@@ -414,7 +437,12 @@ int boot_swap_type_multi(int image_index) {
             (table->image_ok_secondary_slot == BOOT_FLAG_ANY ||
                 table->image_ok_secondary_slot == secondary_slot.image_ok) &&
             (table->copy_done_primary_slot == BOOT_FLAG_ANY  ||
-                table->copy_done_primary_slot == primary_slot.copy_done)) {
+                table->copy_done_primary_slot == primary_slot.copy_done)
+            #if defined(MCUBOOT_SWAP_USING_OFFSET)
+            && (table->copy_done_secondary_slot == BOOT_FLAG_ANY  ||
+                table->copy_done_secondary_slot == secondary_slot.copy_done)
+            #endif
+            ) {
             BOOT_LOG_INF("Image index: %d, Swap type: %s", image_index,
                          table->swap_type == BOOT_SWAP_TYPE_TEST   ? "test"   :
                          table->swap_type == BOOT_SWAP_TYPE_PERM   ? "perm"   :
