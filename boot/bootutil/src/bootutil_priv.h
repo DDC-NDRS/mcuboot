@@ -430,7 +430,7 @@ boot_img_num_sectors(const struct boot_loader_state* state, size_t slot) {
  */
 static inline uint32_t
 boot_img_slot_off(struct boot_loader_state* state, size_t slot) {
-    return flash_area_get_off(BOOT_IMG(state, slot).area);
+    return flash_area_get_off(BOOT_IMG_AREA(state, slot));
 }
 
 #ifndef MCUBOOT_USE_FLASH_AREA_GET_SECTORS
@@ -495,9 +495,6 @@ struct bootsim_ram_info* bootsim_get_ram_info(void);
     (memcpy((output), (void*)(IMAGE_RAM_BASE + (hdr)->ih_load_addr + (start)), (size)), 0)
 
 int boot_load_image_to_sram(struct boot_loader_state *state);
-int boot_remove_image_from_sram(struct boot_loader_state *state);
-int boot_remove_image_from_flash(struct boot_loader_state *state,
-                                 uint32_t slot);
 #else
 #define IMAGE_RAM_BASE ((uintptr_t)0)
 

@@ -118,6 +118,10 @@ static struct sector_buffer_t sector_buffers;
         boot_copy_region(state, fap_pri, fap_sec, pri_off, sec_off, sz)
 #endif
 
+struct boot_loader_state* boot_get_loader_state(void) {
+    return &boot_data;
+}
+
 static int
 boot_read_image_headers(struct boot_loader_state* state, bool require_all,
                         struct boot_status* bs) {
@@ -1024,7 +1028,6 @@ static fih_ret boot_validate_slot(struct boot_loader_state* state, int slot,
     hdr = boot_img_hdr(state, slot);
     if ((boot_check_header_erased(state, slot) == 0) ||
         (hdr->ih_flags & IMAGE_F_NON_BOOTABLE)) {
-
         #if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_OFFSET)
         /*
          * This fixes an issue where an image might be erased, but a trailer
@@ -1038,6 +1041,27 @@ static fih_ret boot_validate_slot(struct boot_loader_state* state, int slot,
          */
         if (slot != BOOT_PRIMARY_SLOT) {
             swap_erase_trailer_sectors(state, fap);
+
+            #if defined(MCUBOOT_SWAP_USING_MOVE)
+            if (bs->swap_type == BOOT_SWAP_TYPE_REVERT ||
+                boot_swap_type_multi(BOOT_CURR_IMG(state)) == BOOT_SWAP_TYPE_REVERT) {
+                const struct flash_area* fap_pri;
+
+                rc = flash_area_open(flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state),
+                                                                         BOOT_PRIMARY_SLOT),
+                                                                         &fap_pri);
+
+                if (rc == 0) {
+                    rc = swap_erase_trailer_sectors(state, fap_pri);
+                    flash_area_close(fap_pri);
+
+                    if (rc == 0) {
+                        BOOT_LOG_INF("Cleared image %d primary slot trailer due to stuck revert",
+                                     BOOT_CURR_IMG(state));
+                    }
+                }
+            }
+            #endif
         }
         #endif
 
@@ -2186,7 +2210,7 @@ static int check_downgrade_prevention(struct boot_loader_state* state) {
     if (MCUBOOT_DOWNGRADE_PREVENTION_SECURITY_COUNTER) {
         /* If there was security no counter in slot 0, allow swap */
         rc = bootutil_get_img_security_cnt(state, BOOT_PRIMARY_SLOT,
-                                           BOOT_IMG(state, 0).area,
+                                           BOOT_IMG_AREA(state, 0),
                                            &security_counter[0]);
         if (rc != 0) {
             return (0);
@@ -2194,7 +2218,7 @@ static int check_downgrade_prevention(struct boot_loader_state* state) {
         /* If there is no security counter in slot 1, or it's lower than
          * that of slot 0, prevent downgrade */
         rc = bootutil_get_img_security_cnt(state, BOOT_SECONDARY_SLOT,
-                                           BOOT_IMG(state, 1).area,
+                                           BOOT_IMG_AREA(state, 1),
                                            &security_counter[1]);
         if (rc != 0 || security_counter[0] > security_counter[1]) {
             rc = -1;
@@ -2207,8 +2231,8 @@ static int check_downgrade_prevention(struct boot_loader_state* state) {
     if (rc < 0) {
         /* Image in slot 0 prevents downgrade, delete image in slot 1 */
         BOOT_LOG_INF("Image %d in slot 1 erased due to downgrade prevention", BOOT_CURR_IMG(state));
-        flash_area_erase(BOOT_IMG(state, 1).area, 0,
-                         flash_area_get_size(BOOT_IMG(state, 1).area));
+        flash_area_erase(BOOT_IMG_AREA(state, 1), 0,
+                         flash_area_get_size(BOOT_IMG_AREA(state, 1)));
     }
     else {
         rc = 0;
