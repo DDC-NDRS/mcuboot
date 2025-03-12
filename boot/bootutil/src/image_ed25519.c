@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2019 JUUL Labs
  * Copyright (c) 2021-2023 Arm Limited
+ * Copyright (c) 2025 Nordic Semiconductor ASA
  */
 
 #include <string.h>
@@ -12,27 +13,30 @@
 #ifdef MCUBOOT_SIGN_ED25519
 #include "bootutil/sign_key.h"
 
+#if !defined(MCUBOOT_KEY_IMPORT_BYPASS_ASN)
 /* We are not really using the MBEDTLS but need the ASN.1 parsing functions */
 #define MBEDTLS_ASN1_PARSE_C
 #include "mbedtls/oid.h"
 #include "mbedtls/asn1.h"
+#endif
 
 #include "bootutil_priv.h"
 #include "bootutil/crypto/common.h"
 #include "bootutil/crypto/sha.h"
 
 #define EDDSA_SIGNATURE_LENGTH 64
-
-static const uint8_t ed25519_pubkey_oid[] = MBEDTLS_OID_ISO_IDENTIFIED_ORG "\x65\x70";
 #define NUM_ED25519_BYTES 32
 
 extern int ED25519_verify(const uint8_t *message, size_t message_len,
                           const uint8_t signature[EDDSA_SIGNATURE_LENGTH],
                           const uint8_t public_key[NUM_ED25519_BYTES]);
 
+#if !defined(MCUBOOT_KEY_IMPORT_BYPASS_ASN)
 /*
  * Parse the public key used for signing.
  */
+static const uint8_t ed25519_pubkey_oid[] = MBEDTLS_OID_ISO_IDENTIFIED_ORG "\x65\x70";
+
 static int
 bootutil_import_key(uint8_t **cp, uint8_t *end)
 {
@@ -68,6 +72,7 @@ bootutil_import_key(uint8_t **cp, uint8_t *end)
 
     return 0;
 }
+#endif /* !defined(MCUBOOT_KEY_IMPORT_BYPASS_ASN) */
 
 /* Signature verification base function.
  * The function takes buffer of specified length and tries to verify
@@ -85,7 +90,7 @@ bootutil_verify(uint8_t *buf, uint32_t blen,
     uint8_t *pubkey;
     uint8_t *end;
 
-    if (slen != EDDSA_SIGNATURE_LENGTH) {
+    if (blen != IMAGE_HASH_SIZE || slen != EDDSA_SIGNATURE_LENGTH) {
         FIH_SET(fih_rc, FIH_FAILURE);
         goto out;
     }
@@ -93,11 +98,25 @@ bootutil_verify(uint8_t *buf, uint32_t blen,
     pubkey = (uint8_t *)bootutil_keys[key_id].key;
     end = pubkey + *bootutil_keys[key_id].len;
 
+#if !defined(MCUBOOT_KEY_IMPORT_BYPASS_ASN)
     rc = bootutil_import_key(&pubkey, end);
     if (rc) {
         FIH_SET(fih_rc, FIH_FAILURE);
         goto out;
     }
+#else
+    /* Directly use the key contents from the ASN stream,
+     * these are the last NUM_ED25519_BYTES.
+     * There is no check whether this is the correct key,
+     * here, by the algorithm selected.
+     */
+    if (*bootutil_keys[key_id].len < NUM_ED25519_BYTES) {
+        FIH_SET(fih_rc, FIH_FAILURE);
+        goto out;
+    }
+
+    pubkey = end - NUM_ED25519_BYTES;
+#endif
 
     rc = ED25519_verify(buf, blen, sig, pubkey);
 

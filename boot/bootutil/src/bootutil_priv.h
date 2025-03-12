@@ -297,32 +297,31 @@ fih_ret bootutil_verify_img(uint8_t* img, uint32_t size,
 
 fih_ret boot_fih_memequal(const void* s1, const void* s2, size_t n);
 
-int      boot_find_status(int image_index, const struct flash_area** fap);
-int      boot_magic_compatible_check(uint8_t tbl_val, uint8_t val);
+struct flash_area const* boot_find_status(struct boot_loader_state const* state,
+                                          int image_index);
+int boot_magic_compatible_check(uint8_t tbl_val, uint8_t val);
 uint32_t boot_status_sz(uint32_t min_write_sz);
 uint32_t boot_trailer_sz(uint32_t min_write_sz);
-int      boot_status_entries(int image_index, const struct flash_area* fap);
+int boot_status_entries(int image_index, const struct flash_area* fap);
 uint32_t boot_status_off(const struct flash_area* fap);
-int      boot_read_swap_state(const struct flash_area* fap,
-                              struct boot_swap_state* state);
-int      boot_read_swap_state_by_id(int flash_area_id,
-                                    struct boot_swap_state* state);
-int      boot_write_magic(const struct flash_area* fap);
-int      boot_write_status(const struct boot_loader_state* state, struct boot_status* bs);
-int      boot_write_copy_done(const struct flash_area* fap);
-int      boot_write_image_ok(const struct flash_area* fap);
-int      boot_write_swap_info(const struct flash_area* fap, uint8_t swap_type,
-                              uint8_t image_num);
-int      boot_write_swap_size(const struct flash_area* fap, uint32_t swap_size);
-int      boot_write_trailer(const struct flash_area* fap, uint32_t off,
-                            uint8_t const* inbuf, uint8_t inlen);
-int      boot_write_trailer_flag(const struct flash_area* fap, uint32_t off,
-                                 uint8_t flag_val);
-int      boot_read_swap_size(const struct flash_area* fap, uint32_t* swap_size);
-int      boot_slots_compatible(struct boot_loader_state* state);
+int boot_read_swap_state(const struct flash_area* fap,
+                         struct boot_swap_state* state);
+int boot_write_magic(struct flash_area const* fap);
+int boot_write_status(struct boot_loader_state const* state, struct boot_status* bs);
+int boot_write_copy_done(struct flash_area const* fap);
+int boot_write_image_ok(struct flash_area const* fap);
+int boot_write_swap_info(struct flash_area const* fap, uint8_t swap_type,
+                         uint8_t image_num);
+int boot_write_swap_size(struct flash_area const* fap, uint32_t swap_size);
+int boot_write_trailer(struct flash_area const* fap, uint32_t off,
+                       uint8_t const* inbuf, uint8_t inlen);
+int boot_write_trailer_flag(struct flash_area const* fap, uint32_t off,
+                            uint8_t flag_val);
+int boot_read_swap_size(struct flash_area const* fap, uint32_t* swap_size);
+int boot_slots_compatible(struct boot_loader_state* state);
 uint32_t boot_status_internal_off(const struct boot_status* bs, int elem_sz);
-int      boot_read_image_header(struct boot_loader_state* state, int slot,
-                                struct image_header* out_hdr, struct boot_status* bs);
+int boot_read_image_header(struct boot_loader_state* state, int slot,
+                           struct image_header* out_hdr, struct boot_status* bs);
 #if defined(MCUBOOT_SWAP_USING_OFFSET) && defined(MCUBOOT_ENC_IMAGES)
 int boot_copy_region(struct boot_loader_state* state,
                      const struct flash_area* fap_src,
@@ -342,6 +341,20 @@ int boot_write_enc_key(const struct flash_area* fap, uint8_t slot,
                        const struct boot_status* bs);
 int boot_read_enc_key(const struct flash_area* fap, uint8_t slot,
                       struct boot_status* bs);
+#endif
+
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
+/**
+ * Finds the first sector of a given slot that holds image trailer data.
+ *
+ * @param state      Current bootloader's state.
+ * @param slot       The index of the slot to consider.
+ * @param trailer_sz The size of the trailer, in bytes.
+ *
+ * @return The index of the first sector of the slot that holds image trailer data.
+ */
+size_t
+boot_get_first_trailer_sector(struct boot_loader_state *state, size_t slot, size_t trailer_sz);
 #endif
 
 /**
@@ -503,7 +516,7 @@ int boot_load_image_to_sram(struct boot_loader_state *state);
 
 #endif /* MCUBOOT_RAM_LOAD */
 
-uint32_t bootutil_max_image_size(const struct flash_area* fap);
+uint32_t bootutil_max_image_size(struct boot_loader_state* state, const struct flash_area* fap);
 
 int boot_read_image_size(struct boot_loader_state *state, int slot,
                          uint32_t *size);
