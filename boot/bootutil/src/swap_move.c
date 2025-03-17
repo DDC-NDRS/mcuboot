@@ -396,14 +396,18 @@ boot_move_sector_up(int idx, uint32_t sz, struct boot_loader_state *state,
 
     if (bs->idx == BOOT_STATUS_IDX_0) {
         if (bs->source != BOOT_STATUS_SOURCE_PRIMARY_SLOT) {
-            rc = swap_erase_trailer_sectors(state, fap_pri);
+            /* Remove data and prepare for write on devices requiring erase */
+            rc = swap_scramble_trailer_sectors(state, fap_pri);
             assert(rc == 0);
 
             rc = swap_status_init(state, fap_pri, bs);
             assert(rc == 0);
         }
 
-        rc = swap_erase_trailer_sectors(state, fap_sec);
+        /* Remove status from secondary slot trailer, in case of device with
+	 * erase requirement this will also prepare traier for write.
+	 */
+        rc = swap_scramble_trailer_sectors(state, fap_sec);
         assert(rc == 0);
     }
 
@@ -493,7 +497,8 @@ fixup_revert(const struct boot_loader_state *state, struct boot_status *bs,
     BOOT_LOG_SWAP_STATE("Secondary image", &swap_state);
 
     if (swap_state.magic == BOOT_MAGIC_UNSET) {
-        rc = swap_erase_trailer_sectors(state, fap_sec);
+        /* Remove trailer and prepare area for write on devices requiring erase */
+        rc = swap_scramble_trailer_sectors(state, fap_sec);
         assert(rc == 0);
 
         rc = boot_write_image_ok(fap_sec);
@@ -517,10 +522,8 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     uint32_t trailer_sz;
     uint32_t first_trailer_idx;
     uint32_t last_idx;
-    uint8_t image_index;
     const struct flash_area *fap_pri;
     const struct flash_area *fap_sec;
-    int rc;
 
     BOOT_LOG_INF("Starting swap using move algorithm.");
 
@@ -553,13 +556,11 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
         }
     }
 
-    image_index = BOOT_CURR_IMG(state);
+    fap_pri = BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT);
+    assert(fap_pri != NULL);
 
-    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index), &fap_pri);
-    assert (rc == 0);
-
-    rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY(image_index), &fap_sec);
-    assert (rc == 0);
+    fap_sec = BOOT_IMG_AREA(state, BOOT_SECONDARY_SLOT);
+    assert(fap_sec != NULL);
 
     fixup_revert(state, bs, fap_sec);
 
@@ -583,9 +584,6 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
         }
         idx++;
     }
-
-    flash_area_close(fap_pri);
-    flash_area_close(fap_sec);
 }
 
 int app_max_size(struct boot_loader_state *state)

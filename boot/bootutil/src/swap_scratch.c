@@ -561,14 +561,14 @@ static void boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state* st
 
     image_index = BOOT_CURR_IMG(state);
 
-    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index), &fap_primary_slot);
-    assert (rc == 0);
+    fap_primary_slot = BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT);
+    assert(fap_primary_slot != NULL);
 
-    rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY(image_index), &fap_secondary_slot);
-    assert (rc == 0);
+    fap_secondary_slot = BOOT_IMG_AREA(state, BOOT_SECONDARY_SLOT);
+    assert(fap_secondary_slot != NULL);
 
-    rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH, &fap_scratch);
-    assert (rc == 0);
+    fap_scratch = state->scratch.area;
+    assert(fap_scratch != NULL);
 
     /* Calculate offset from start of image area. */
     img_off = boot_img_sector_off(state, BOOT_PRIMARY_SLOT, idx);
@@ -630,7 +630,7 @@ static void boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state* st
                  * last sector is not being used by the image data so it's safe
                  * to erase.
                  */
-                rc = swap_erase_trailer_sectors(state, fap_primary_slot);
+                rc = swap_scramble_trailer_sectors(state, fap_primary_slot);
                 assert(rc == 0);
 
                 rc = swap_status_init(state, fap_primary_slot, bs);
@@ -687,6 +687,14 @@ static void boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state* st
         rc = boot_copy_region(state, fap_primary_slot, fap_secondary_slot,
                               img_off, img_off, copy_sz);
         assert(rc == 0);
+
+        if (bs->idx == BOOT_STATUS_IDX_0 && !bs->use_scratch) {
+            /* If not all sectors of the slot are being swapped,
+             * guarantee here that only the primary slot will have the state.
+             */
+            rc = swap_scramble_trailer_sectors(state, fap_secondary_slot);
+            assert(rc == 0);
+        }
 
         rc = boot_write_status(state, bs);
         bs->state = BOOT_STATUS_STATE_2;
@@ -780,10 +788,6 @@ static void boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state* st
             assert(rc == 0);
         }
     }
-
-    flash_area_close(fap_primary_slot);
-    flash_area_close(fap_secondary_slot);
-    flash_area_close(fap_scratch);
 }
 
 void swap_run(struct boot_loader_state* state, struct boot_status* bs,
