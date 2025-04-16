@@ -47,7 +47,7 @@
 #ifdef CONFIG_BOOT_USE_NRF_CC310_BL
 #define MCUBOOT_USE_NRF_CC310_BL
 #endif
-#elif defined(CONFIG_MBEDTLS_PSA_CRYPTO_CLIENT)
+#elif defined(CONFIG_BOOT_USE_PSA_CRYPTO)
 #define MCUBOOT_USE_PSA_CRYPTO
 #endif
 
@@ -420,6 +420,9 @@
 #elif defined(CONFIG_NRFX_WDT31)
 #define MCUBOOT_WATCHDOG_FEED() \
     FEED_WDT_INST(31);
+#elif defined(CONFIG_NRFX_WDT010)
+#define MCUBOOT_WATCHDOG_FEED() \
+    FEED_WDT_INST(010);
 #else
 #error "No NRFX WDT instances enabled"
 #endif

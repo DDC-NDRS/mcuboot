@@ -662,7 +662,7 @@ static void boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state* st
              * trailer since in case the trailer spreads over multiple sector erasing the [img_off,
              * img_off + sz) might not erase the entire trailer.
               */
-            rc = swap_erase_trailer_sectors(state, fap_secondary_slot);
+            rc = swap_scramble_trailer_sectors(state, fap_secondary_slot);
             assert(rc == 0);
 
             if (bs->use_scratch) {
@@ -688,14 +688,6 @@ static void boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state* st
                               img_off, img_off, copy_sz);
         assert(rc == 0);
 
-        if (bs->idx == BOOT_STATUS_IDX_0 && !bs->use_scratch) {
-            /* If not all sectors of the slot are being swapped,
-             * guarantee here that only the primary slot will have the state.
-             */
-            rc = swap_scramble_trailer_sectors(state, fap_secondary_slot);
-            assert(rc == 0);
-        }
-
         rc = boot_write_status(state, bs);
         bs->state = BOOT_STATUS_STATE_2;
         BOOT_STATUS_ASSERT(rc == 0);
@@ -710,7 +702,7 @@ static void boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state* st
              * able to write the new trailer. This is not always equivalent to erasing the [img_off,
              * img_off + sz) range when the trailer spreads across multiple sectors.
              */
-            rc = swap_erase_trailer_sectors(state, fap_primary_slot);
+            rc = swap_scramble_trailer_sectors(state, fap_primary_slot);
             assert(rc == 0);
 
             /* Ensure the sector(s) containing the beginning of the trailer won't be erased twice */
