@@ -374,9 +374,11 @@ int swap_status_source(struct boot_loader_state* state) {
     for (i = 0; i < BOOT_STATUS_TABLES_COUNT; i++) {
         table = &boot_status_tables[i];
 
-        if (boot_magic_compatible_check(table->bst_magic_primary_slot, state_primary_slot.magic) &&
+        if (boot_magic_compatible_check(table->bst_magic_primary_slot,
+                                        state_primary_slot.magic) &&
             #if MCUBOOT_SWAP_USING_SCRATCH
-            boot_magic_compatible_check(table->bst_magic_scratch, state_scratch.magic) &&
+            boot_magic_compatible_check(table->bst_magic_scratch,
+                                        state_scratch.magic) &&
             #endif
             ((table->bst_copy_done_primary_slot == BOOT_FLAG_ANY) ||
              (table->bst_copy_done_primary_slot == state_primary_slot.copy_done))) {
@@ -396,8 +398,8 @@ int swap_status_source(struct boot_loader_state* state) {
             BOOT_LOG_INF("Boot source: %s",
                          source == BOOT_STATUS_SOURCE_NONE         ? "none" :
                          source == BOOT_STATUS_SOURCE_SCRATCH      ? "scratch" :
-                         source == BOOT_STATUS_SOURCE_PRIMARY_SLOT ? "primary slot" :
-                                                                     "BUG; can't happen");
+                         source == BOOT_STATUS_SOURCE_PRIMARY_SLOT ?
+                                   "primary slot" : "BUG; can't happen");
             return (source);
         }
     }
@@ -614,7 +616,7 @@ static void boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state* st
 
     if (bs->state == BOOT_STATUS_STATE_0) {
         BOOT_LOG_DBG("erasing scratch area");
-        rc = boot_erase_region(fap_scratch, 0, flash_area_get_size(fap_scratch));
+        rc = boot_erase_region(fap_scratch, 0, flash_area_get_size(fap_scratch), false);
         assert(rc == 0);
 
         if (bs->idx == BOOT_STATUS_IDX_0) {
@@ -638,7 +640,7 @@ static void boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state* st
 
                 /* Erase the temporary trailer from the scratch area. */
                 rc = boot_erase_region(fap_scratch, 0,
-                                       flash_area_get_size(fap_scratch));
+                                       flash_area_get_size(fap_scratch), false);
                 assert(rc == 0);
             }
         }
@@ -680,7 +682,7 @@ static void boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state* st
         }
 
         if (erase_sz > 0) {
-            rc = boot_erase_region(fap_secondary_slot, img_off, erase_sz);
+            rc = boot_erase_region(fap_secondary_slot, img_off, erase_sz, false);
             assert(rc == 0);
         }
 
@@ -713,7 +715,7 @@ static void boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state* st
         }
 
         if (erase_sz > 0) {
-            rc = boot_erase_region(fap_primary_slot, img_off, erase_sz);
+            rc = boot_erase_region(fap_primary_slot, img_off, erase_sz, false);
             assert(rc == 0);
         }
 
@@ -776,7 +778,12 @@ static void boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state* st
         BOOT_STATUS_ASSERT(rc == 0);
 
         if (erase_scratch) {
-            rc = boot_erase_region(fap_scratch, 0, flash_area_get_size(fap_scratch));
+           /* Scratch trailers MUST be erased backwards, this is to avoid an issue whereby a
+            * device reboots in the process of erasing the scratch if it erased forwards, if that
+            * happens then the scratch which is partially erased would be wrote back to the
+            * primary slot, causing a corrupt unbootable image
+            */
+            rc = boot_erase_region(fap_scratch, 0, flash_area_get_size(fap_scratch), true);
             assert(rc == 0);
         }
     }
