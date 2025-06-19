@@ -294,12 +294,11 @@ bootutil_find_key(uint8_t* keyhash, uint8_t keyhash_len) {
         bootutil_sha_init(&sha_ctx);
         bootutil_sha_update(&sha_ctx, key->key, *key->len);
         bootutil_sha_finish(&sha_ctx, hash);
+        bootutil_sha_drop(&sha_ctx);
         if (!memcmp(hash, keyhash, keyhash_len)) {
-            bootutil_sha_drop(&sha_ctx);
             return (i);
         }
     }
-    bootutil_sha_drop(&sha_ctx);
 
     return (-1);
 }
@@ -492,8 +491,8 @@ bootutil_img_validate(struct boot_loader_state* state,
     uint32_t off;
     uint16_t len;
     uint16_t type;
-
-    #ifdef EXPECTED_SIG_TLV
+    uint32_t img_sz;
+#ifdef EXPECTED_SIG_TLV
     FIH_DECLARE(valid_signature, FIH_FAILURE);
     #ifndef MCUBOOT_BUILTIN_KEY
     int key_id = -1;
@@ -561,7 +560,13 @@ bootutil_img_validate(struct boot_loader_state* state,
         goto out;
     }
 
-    if (it.tlv_end > bootutil_max_image_size(state, fap)) {
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+    img_sz = it.tlv_end - it.start_off;
+#else
+    img_sz = it.tlv_end;
+#endif
+
+    if (img_sz > bootutil_max_image_size(state, fap)) {
         rc = -1;
         goto out;
     }

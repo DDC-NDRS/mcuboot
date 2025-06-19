@@ -152,7 +152,10 @@ struct arm_vector_table {
 };
 
 static void do_boot(struct boot_rsp* rsp) {
-    struct arm_vector_table* vt;
+    /* vt is static as it shall not land on the stack,
+     * as this procedure modifies stack pointer before usage of *vt
+     */
+    static struct arm_vector_table* vt;
 
     /* The beginning of the image is the ARM vector table, containing
      * the initial stack pointer address and the reset vector
@@ -195,7 +198,7 @@ static void do_boot(struct boot_rsp* rsp) {
     sys_cache_data_disable();
     #endif
 
-    #if (CONFIG_CPU_HAS_ARM_MPU || CONFIG_CPU_HAS_NXP_MPU)
+#if (CONFIG_CPU_HAS_ARM_MPU || CONFIG_CPU_HAS_NXP_SYSMPU)
     z_arm_clear_arm_mpu_config();
     #endif
 
