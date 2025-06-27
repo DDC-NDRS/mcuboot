@@ -46,8 +46,6 @@ extern "C" {
 #define STRUCT_PACKED struct __attribute__((__packed__))
 #endif
 
-struct flash_area;
-
 #define IMAGE_MAGIC                 0x96F3B83D
 #define IMAGE_MAGIC_V1              0x96F3B83C
 #define IMAGE_MAGIC_NONE            0xFFFFFFFF
@@ -115,6 +113,9 @@ struct flash_area;
 #define IMAGE_TLV_ENC_KW            0x31   /* Key encrypted with AES-KW 128 or 256*/
 #define IMAGE_TLV_ENC_EC256         0x32   /* Key encrypted with ECIES-EC256 */
 #define IMAGE_TLV_ENC_X25519        0x33   /* Key encrypted with ECIES-X25519 */
+#define IMAGE_TLV_ENC_X25519_SHA512 0x34   /* Key exchange using ECIES-X25519 and SHA512 for MAC
+                                            * tag and HKDF in key derivation process
+                                            */
 #define IMAGE_TLV_DEPENDENCY        0x40   /* Image depends on other image */
 #define IMAGE_TLV_SEC_CNT           0x50   /* security counter */
 #define IMAGE_TLV_BOOT_RECORD       0x60   /* measured boot record */
@@ -131,16 +132,16 @@ struct flash_area;
                                             * signature
                                             */
 #define IMAGE_TLV_COMP_DEC_SIZE     0x73   /* Compressed decrypted image size */
-                       /*
-                        * vendor reserved TLVs at xxA0-xxFF,
-                        * where xx denotes the upper byte
-                        * range.  Examples:
-                        * 0x00A0 - 0x00FF
-                        * 0x01A0 - 0x01FF
-                        * 0x02A0 - 0x02FF
-                        * ...
-                        * 0xFFA0 - 0xFFFE
-                        */
+                                           /*
+                                            * vendor reserved TLVs at xxA0-xxFF,
+                                            * where xx denotes the upper byte
+                                            * range.  Examples:
+                                            * 0x00A0 - 0x00FF
+                                            * 0x01A0 - 0x01FF
+                                            * 0x02A0 - 0x02FF
+                                            * ...
+                                            * 0xFFA0 - 0xFFFE
+                                            */
 #define IMAGE_TLV_ANY               0xFFFF /* Used to iterate over all TLV */
 
 STRUCT_PACKED image_version {
@@ -199,16 +200,14 @@ STRUCT_PACKED image_tlv {
 _Static_assert(sizeof(struct image_header) == IMAGE_HEADER_SIZE,
                "struct image_header not required size");
 
-struct enc_key_data;
 struct boot_loader_state;
+struct flash_area;
+
 fih_ret bootutil_img_validate(struct boot_loader_state* state,
                               struct image_header* hdr,
                               const struct flash_area* fap,
                               uint8_t* tmp_buf, uint32_t tmp_buf_sz,
                               uint8_t* seed, int seed_len, uint8_t* out_hash
-                              #if defined(MCUBOOT_SWAP_USING_OFFSET) && defined(MCUBOOT_SERIAL_RECOVERY)
-                              , uint32_t start_off
-                              #endif
 );
 
 struct image_tlv_iter {

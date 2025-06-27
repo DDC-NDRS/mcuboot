@@ -283,6 +283,14 @@ struct boot_loader_state {
     #endif /* MCUBOOT_DIRECT_XIP || MCUBOOT_RAM_LOAD */
 };
 
+struct boot_sector_buffer {
+    boot_sector_t primary[BOOT_IMAGE_NUMBER][BOOT_MAX_IMG_SECTORS];
+    boot_sector_t secondary[BOOT_IMAGE_NUMBER][BOOT_MAX_IMG_SECTORS];
+#if MCUBOOT_SWAP_USING_SCRATCH
+    boot_sector_t scratch[BOOT_MAX_IMG_SECTORS];
+#endif
+};
+
 /* The function is intended for verification of image hash against
  * provided signature.
  */
@@ -386,6 +394,37 @@ boot_get_first_trailer_sector(struct boot_loader_state *state, size_t slot, size
  */
 bool bootutil_buffer_is_erased(const struct flash_area* area,
                                void const* buffer, size_t len);
+
+/**
+ * Opens the flash areas of all images.
+ *
+ * @param state Bootloader state.
+ *
+ * @return 0 on success, another value otherwise.
+ */
+int boot_open_all_flash_areas(struct boot_loader_state *state);
+
+/**
+ * Closes the flash areas of all images.
+ *
+ * @param state Bootloader state.
+ */
+void boot_close_all_flash_areas(struct boot_loader_state *state);
+
+#if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
+/**
+ * Determines the sector layout of both image slots and the scratch area.
+ *
+ * This information is necessary for calculating the number of bytes to erase
+ * and copy during an image swap. The information collected during this
+ * function is used to populate the state.
+ *
+ * @param state   Bootloader state.
+ * @param sectors Buffers where to store the sector layout. If NULL, the statically-allocated
+ *                buffers in loader.c will be used.
+ */
+int boot_read_sectors(struct boot_loader_state *state, struct boot_sector_buffer *sectors);
+#endif
 
 /**
  * Safe (non-overflowing) uint32_t addition.  Returns true, and stores

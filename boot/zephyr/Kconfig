@@ -547,6 +547,14 @@ config BOOT_IMAGE_EXECUTABLE_RAM_SIZE
 	default $(dt_chosen_reg_size_int,$(DT_CHOSEN_Z_SRAM),0)
 endif
 
+config MULTIPLE_EXECUTABLE_RAM_REGIONS
+	bool "Platform RAM is split over multiple areas"
+	depends on BOOT_RAM_LOAD
+	help
+	  To be selected if MCUBoot should be aware of several executable RAM areas.
+	  When selected, boot_get_image_exec_ram_info() should be updated to provide
+	  the information about the areas.
+
 config FLASH_RUNTIME_SOURCES
 	bool "Images are read from flash partitions defined at runtime"
 	depends on SINGLE_APPLICATION_SLOT
@@ -600,6 +608,15 @@ config BOOT_ENCRYPT_X25519
 	bool
 	help
 	  Hidden option selecting x25519 encryption.
+
+config BOOT_HMAC_SHA512
+	bool "Use SHA512 for HMAC/HKDF"
+	depends on BOOT_ENCRYPT_X25519
+	depends on BOOT_USE_PSA_CRYPTO
+	help
+	  By default SHA256 is used for HKDF/HMAC in key exchange expansion
+	  and verification. This options switches to SHA512. The option is
+	  mainly useful to reduce numer of compiled in SHA algorithms.
 
 config BOOT_ENCRYPTION_KEY_FILE
 	string "Encryption key file"

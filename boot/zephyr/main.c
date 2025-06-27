@@ -2,6 +2,7 @@
  * Copyright (c) 2012-2014 Wind River Systems, Inc.
  * Copyright (c) 2020 Arm Limited
  * Copyright (c) 2021-2023 Nordic Semiconductor ASA
+ * Copyright (c) 2025 Aerlync Labs Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -324,6 +325,36 @@ static void do_boot(struct boot_rsp* rsp) {
     #endif /* CONFIG_SOC_FAMILY_ESPRESSIF_ESP32 */
 }
 
+#elif defined(CONFIG_ARC)
+
+/*
+ * ARC vector table has a pointer to the reset function as the first entry
+ * in the vector table. Assume the vector table is at the start of the image,
+ * and jump to reset
+ */
+static void do_boot(struct boot_rsp* rsp) {
+    struct arc_vector_table {
+        void (*reset)(void); /* Reset vector */
+    } *vt;
+
+    #if defined(MCUBOOT_RAM_LOAD)
+    vt = (struct arc_vector_table *)(rsp->br_hdr->ih_load_addr + rsp->br_hdr->ih_hdr_size);
+    #else
+    uintptr_t flash_base;
+    int rc;
+
+    rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
+    assert(rc == 0);
+
+    vt = (struct arc_vector_table *)(flash_base + rsp->br_image_off +
+                     rsp->br_hdr->ih_hdr_size);
+    #endif
+
+    /* Lock interrupts and dive into the entry point */
+    irq_lock();
+    vt->reset();
+}
+
 #else
 /* Default: Assume entry point is at the very beginning of the image. Simply
  * lock interrupts and jump there. This is the right thing to do for X86 and
@@ -432,6 +463,9 @@ static void boot_serial_enter(void) {
 int /**/main(void) {
     struct boot_rsp rsp;
     int rc;
+    #if defined(CONFIG_BOOT_USB_DFU_GPIO) || defined(CONFIG_BOOT_USB_DFU_WAIT)
+    bool usb_dfu_requested = false;
+    #endif
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
     MCUBOOT_WATCHDOG_SETUP();
@@ -457,6 +491,7 @@ int /**/main(void) {
     mcuboot_status_change(MCUBOOT_STATUS_STARTUP);
 
     #ifdef CONFIG_BOOT_SERIAL_ENTRANCE_GPIO
+    BOOT_LOG_DBG("Checking GPIO for serial recovery");
     if (io_detect_pin() &&
         !io_boot_skip_serial_recovery()) {
         boot_serial_enter();
@@ -464,43 +499,49 @@ int /**/main(void) {
     #endif
 
     #ifdef CONFIG_BOOT_SERIAL_PIN_RESET
+    BOOT_LOG_DBG("Checking RESET pin for serial recovery");
     if (io_detect_pin_reset()) {
         boot_serial_enter();
     }
     #endif
 
     #if defined(CONFIG_BOOT_USB_DFU_GPIO)
+    BOOT_LOG_DBG("Checking GPIO for USB DFU request");
     if (io_detect_pin()) {
+        BOOT_LOG_DBG("Entering USB DFU");
+
+        usb_dfu_requested = true;
+
         #ifdef CONFIG_MCUBOOT_INDICATION_LED
         io_led_set(1);
         #endif
 
         mcuboot_status_change(MCUBOOT_STATUS_USB_DFU_ENTERED);
+        }
+    #elif defined(CONFIG_BOOT_USB_DFU_WAIT)
+    usb_dfu_requested = true;
+    #endif
 
+    #if defined(CONFIG_BOOT_USB_DFU_GPIO) || defined(CONFIG_BOOT_USB_DFU_WAIT)
+    if (usb_dfu_requested) {
         rc = usb_enable(NULL);
         if (rc) {
-            BOOT_LOG_ERR("Cannot enable USB");
+            BOOT_LOG_ERR("Cannot enable USB: %d", rc);
         }
         else {
             BOOT_LOG_INF("Waiting for USB DFU");
-            wait_for_usb_dfu(K_FOREVER);
+
+            #if defined(CONFIG_BOOT_USB_DFU_WAIT)
+            BOOT_LOG_DBG("Waiting for USB DFU for %dms", CONFIG_BOOT_USB_DFU_WAIT_DELAY_MS);
+            mcuboot_status_change(MCUBOOT_STATUS_USB_DFU_WAITING);
+            wait_for_usb_dfu(K_MSEC(CONFIG_BOOT_USB_DFU_WAIT_DELAY_MS));
             BOOT_LOG_INF("USB DFU wait time elapsed");
+            mcuboot_status_change(MCUBOOT_STATUS_USB_DFU_TIMED_OUT);
+            #else
+            wait_for_usb_dfu(K_FOREVER);
+            BOOT_LOG_INF("USB DFU wait terminated");
+            #endif
         }
-    }
-    #elif defined(CONFIG_BOOT_USB_DFU_WAIT)
-    rc = usb_enable(NULL);
-    if (rc) {
-        BOOT_LOG_ERR("Cannot enable USB");
-    }
-    else {
-        BOOT_LOG_INF("Waiting for USB DFU");
-
-        mcuboot_status_change(MCUBOOT_STATUS_USB_DFU_WAITING);
-
-        wait_for_usb_dfu(K_MSEC(CONFIG_BOOT_USB_DFU_WAIT_DELAY_MS));
-        BOOT_LOG_INF("USB DFU wait time elapsed");
-
-        mcuboot_status_change(MCUBOOT_STATUS_USB_DFU_TIMED_OUT);
     }
     #endif
 
@@ -523,12 +564,14 @@ int /**/main(void) {
     if (FIH_EQ(fih_rc, FIH_BOOT_HOOK_REGULAR)) {
         FIH_CALL(boot_go, fih_rc, &rsp);                        /* MCUBOOT_SEQ00 */
     }
+    BOOT_LOG_DBG("Left boot_go with success == %d", FIH_EQ(fih_rc, FIH_SUCCESS) ? 1 : 0);
 
     #ifdef CONFIG_BOOT_SERIAL_BOOT_MODE
     if (io_detect_boot_mode()) {
         /* Boot mode to stay in bootloader, clear status and enter serial
          * recovery mode
          */
+        BOOT_LOG_DBG("Staying in serial recovery");
         boot_serial_enter();
     }
     #endif

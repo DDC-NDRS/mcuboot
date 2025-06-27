@@ -134,6 +134,10 @@
 #define IMAGE_EXECUTABLE_RAM_SIZE CONFIG_BOOT_IMAGE_EXECUTABLE_RAM_SIZE
 #endif
 
+#ifdef CONFIG_MULTIPLE_EXECUTABLE_RAM_REGIONS
+#define MULTIPLE_EXECUTABLE_RAM_REGIONS
+#endif
+
 #ifdef CONFIG_LOG
 #define MCUBOOT_HAVE_LOGGING    1
 #endif
@@ -151,6 +155,13 @@
 #ifdef CONFIG_BOOT_ENCRYPT_X25519
 #define MCUBOOT_ENC_IMAGES
 #define MCUBOOT_ENCRYPT_X25519
+#endif
+
+/* Support for HMAC/HKDF using SHA512; this is used in key exchange where
+ * HKDF is used for key expansion and HMAC is used for key verification.
+ */
+#ifdef CONFIG_BOOT_HMAC_SHA512
+#define MCUBOOT_HMAC_SHA512
 #endif
 
 #ifdef CONFIG_BOOT_DECOMPRESSION

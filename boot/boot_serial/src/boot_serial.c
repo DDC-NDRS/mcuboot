@@ -278,10 +278,10 @@ bs_list_img_ver(char* dst, int maxlen, struct image_version* ver) {
 /*
  * List images.
  */
-static void bs_list(char* buf, int len) {
+static void
+bs_list(struct boot_loader_state* state, char* buf, int len) {
     struct image_header hdr;
     uint32_t slot;
-    uint32_t area_id;
     const struct flash_area* fap;
     uint8_t image_index;
     #ifdef MCUBOOT_SERIAL_IMG_GRP_HASH
@@ -291,11 +291,13 @@ static void bs_list(char* buf, int len) {
     zcbor_map_start_encode(cbor_state, 1);
     zcbor_tstr_put_lit_cast(cbor_state, "images");
     zcbor_list_start_encode(cbor_state, 5);
-    image_index = 0;
-    IMAGES_ITER(image_index) {
+
+    IMAGES_ITER(BOOT_CURR_IMG(state)) {
         #if defined(MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE) || defined(MCUBOOT_SWAP_USING_OFFSET)
-        int swap_status = boot_swap_type_multi(image_index);
+        int swap_status = boot_swap_type_multi(BOOT_CURR_IMG(state));
         #endif
+        image_index = BOOT_CURR_IMG(state);
+        (void) image_index; /* Might be unused depending on the configuration */
 
         for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
             FIH_DECLARE(fih_rc, FIH_FAILURE);
@@ -313,26 +315,16 @@ static void bs_list(char* buf, int len) {
             uint32_t start_off = 0;
             #endif
 
-            area_id = flash_area_id_from_multi_image_slot(image_index, slot);
-            if (flash_area_open(area_id, &fap)) {
+            fap = BOOT_IMG_AREA(state, slot);
+            if (fap == NULL) {
                 continue;
             }
 
             #ifdef MCUBOOT_SWAP_USING_OFFSET
             if ((slot == BOOT_SECONDARY_SLOT) && (swap_status != BOOT_SWAP_TYPE_REVERT)) {
-                uint32_t num_sectors = SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN;
-                struct flash_sector sector_data;
-
-                rc = flash_area_sectors(fap, &num_sectors, &sector_data);
-
-                if ((rc != 0 && rc != -ENOMEM) ||
-                    num_sectors != SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN) {
-                    flash_area_close(fap);
-                    continue;
+                start_off = boot_img_sector_size(state, slot, 0);
+                state->secondary_offset[image_index] = start_off;
                 }
-
-                start_off = sector_data.fs_size;
-            }
             #endif
 
             rc = BOOT_HOOK_CALL(boot_read_image_header_hook,
@@ -353,13 +345,8 @@ static void bs_list(char* buf, int len) {
                     #if defined(MCUBOOT_ENC_IMAGES)
                     #if !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
                     if (IS_ENCRYPTED(&hdr) && MUST_DECRYPT(fap, image_index, &hdr)) {
-                        #ifdef MCUBOOT_SWAP_USING_OFFSET
-                        FIH_CALL(boot_image_validate_encrypted, fih_rc, fap,
-                                 &hdr, tmpbuf, sizeof(tmpbuf), start_off);
-                        #else
-                        FIH_CALL(boot_image_validate_encrypted, fih_rc, fap,
+                        FIH_CALL(boot_image_validate_encrypted, fih_rc, state, fap,
                                  &hdr, tmpbuf, sizeof(tmpbuf));
-                        #endif
                     }
                     else {
                     #endif
@@ -372,14 +359,8 @@ static void bs_list(char* buf, int len) {
                             hdr.ih_flags &= ~ENCRYPTIONFLAGS;
                         }
                     #endif
-
-                        #ifdef MCUBOOT_SWAP_USING_OFFSET
-                        FIH_CALL(bootutil_img_validate, fih_rc, NULL, &hdr,
-                                 fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL, start_off);
-                        #else
-                        FIH_CALL(bootutil_img_validate, fih_rc, NULL, &hdr,
+                        FIH_CALL(bootutil_img_validate, fih_rc, state, &hdr,
                                  fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL);
-                        #endif
                     #if defined(MCUBOOT_ENC_IMAGES) && !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
                     }
                     #endif
@@ -387,7 +368,6 @@ static void bs_list(char* buf, int len) {
             }
 
             if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
-                flash_area_close(fap);
                 continue;
             }
 
@@ -400,7 +380,6 @@ static void bs_list(char* buf, int len) {
             #endif
             #endif
 
-            flash_area_close(fap);
             zcbor_map_start_encode(cbor_state, 20);
 
             #if (BOOT_IMAGE_NUMBER > 1)
@@ -495,7 +474,8 @@ static void bs_list(char* buf, int len) {
 /*
  * Set image state.
  */
-static void bs_set(char* buf, int len) {
+static void
+bs_set(struct boot_loader_state* state, char* buf, int len) {
     /*
      * Expected data format.
      * {
@@ -543,41 +523,32 @@ static void bs_set(char* buf, int len) {
     }
 
     if (img_hash.len != 0) {
-        IMAGES_ITER(image_index) {
+        IMAGES_ITER(BOOT_CURR_IMG(state)) {
             #ifdef MCUBOOT_SWAP_USING_OFFSET
-            int swap_status = boot_swap_type_multi(image_index);
+            int swap_status = boot_swap_type_multi(BOOT_CURR_IMG(state));
             #endif
+            image_index = BOOT_CURR_IMG(state);
+            (void) image_index; /* Might be unused depending on the configuration */
 
             for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
                 struct image_header hdr;
-                uint32_t area_id;
                 const struct flash_area *fap;
                 uint8_t tmpbuf[64];
 
                 #ifdef MCUBOOT_SWAP_USING_OFFSET
-                uint32_t num_sectors = SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN;
-                struct flash_sector sector_data;
                 uint32_t start_off = 0;
                 #endif
 
-                area_id = flash_area_id_from_multi_image_slot(image_index, slot);
-                if (flash_area_open(area_id, &fap)) {
-                    BOOT_LOG_ERR("Failed to open flash area ID %d", area_id);
+                fap = BOOT_IMG_AREA(state, slot);
+                if (fap == NULL) {
                     continue;
                 }
 
                 #ifdef MCUBOOT_SWAP_USING_OFFSET
                 if (slot == BOOT_SECONDARY_SLOT && swap_status != BOOT_SWAP_TYPE_REVERT) {
-                    rc = flash_area_sectors(fap, &num_sectors, &sector_data);
-
-                    if ((rc != 0 && rc != -ENOMEM) ||
-                        num_sectors != SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN) {
-                        flash_area_close(fap);
-                        continue;
+                    start_off = boot_img_sector_size(state, slot, 0);
+                    state->secondary_offset[image_index] = start_off;
                     }
-
-                    start_off = sector_data.fs_size;
-                }
                 #endif
 
                 rc = BOOT_HOOK_CALL(boot_read_image_header_hook,
@@ -599,23 +570,13 @@ static void bs_set(char* buf, int len) {
                     if (FIH_EQ(fih_rc, FIH_BOOT_HOOK_REGULAR)) {
                         #ifdef MCUBOOT_ENC_IMAGES
                         if (IS_ENCRYPTED(&hdr)) {
-                            #ifdef MCUBOOT_SWAP_USING_OFFSET
-                            FIH_CALL(boot_image_validate_encrypted, fih_rc, fap,
-                                     &hdr, tmpbuf, sizeof(tmpbuf), start_off);
-                            #else
-                            FIH_CALL(boot_image_validate_encrypted, fih_rc, fap,
+                            FIH_CALL(boot_image_validate_encrypted, fih_rc, state, fap,
                                      &hdr, tmpbuf, sizeof(tmpbuf));
-                            #endif
                         }
                         else {
                         #endif
-                            #ifdef MCUBOOT_SWAP_USING_OFFSET
-                            FIH_CALL(bootutil_img_validate, fih_rc, NULL, &hdr,
-                                     fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL, start_off);
-                            #else
-                            FIH_CALL(bootutil_img_validate, fih_rc, NULL, &hdr,
+                            FIH_CALL(bootutil_img_validate, fih_rc, state, &hdr,
                                      fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL);
-                            #endif
                         #ifdef MCUBOOT_ENC_IMAGES
                         }
                         #endif
@@ -634,8 +595,6 @@ static void bs_set(char* buf, int len) {
                 rc = boot_serial_get_hash(&hdr, fap, hash);
                 #endif
                 #endif
-                flash_area_close(fap);
-
                 if (rc == 0 && memcmp(hash, img_hash.value, sizeof(hash)) == 0) {
                     /* Hash matches, set this slot for test or confirmation */
                     found = true;
@@ -659,7 +618,7 @@ set_image_state :
 out :
     if (rc == 0) {
         /* Success - return updated list of images */
-        bs_list(buf, len);
+        bs_list(state, buf, len);
     }
     else {
         /* Error code, only return the error */
@@ -687,15 +646,51 @@ bs_rc_rsp(int rc_code) {
 
 static void
 bs_list_set(uint8_t op, char* buf, int len) {
+    int rc;
+    struct boot_loader_state* state;
+    bool area_opened = false;
+
+    state = boot_get_loader_state();
+    boot_state_clear(state);
+
+    rc = boot_open_all_flash_areas(state);
+    if (rc != 0) {
+        BOOT_LOG_ERR("Failed to open flash areas: %d", rc);
+        rc = MGMT_ERR_EUNKNOWN;
+        goto out;
+    }
+
+    area_opened = true;
+
+    #if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
+    IMAGES_ITER(BOOT_CURR_IMG(state)) {
+        rc = boot_read_sectors(state, NULL);
+        if (rc != 0) {
+            BOOT_LOG_ERR("Failed to read sectors: %d", rc);
+            rc = MGMT_ERR_EUNKNOWN;
+            goto out;
+        }
+    }
+    #endif
+
     if (op == NMGR_OP_READ) {
-        bs_list(buf, len);
+        bs_list(state, buf, len);
     }
     else {
         #ifdef MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE
-        bs_set(buf, len);
+        bs_set(state, buf, len);
         #else
-        bs_rc_rsp(MGMT_ERR_ENOTSUP);
+        rc = MGMT_ERR_ENOTSUP;
         #endif
+    }
+
+out :
+    if (area_opened) {
+        boot_close_all_flash_areas(state);
+    }
+
+    if (rc != 0) {
+        bs_rc_rsp(rc);
     }
 
     reset_cbor_state();

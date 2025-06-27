@@ -313,7 +313,7 @@ int boot_write_magic(const struct flash_area* fap) {
     (void) memset(&magic[0], erased_val, sizeof(magic));
     (void) memcpy(&magic[BOOT_MAGIC_ALIGN_SIZE - BOOT_MAGIC_SZ], BOOT_IMG_MAGIC, BOOT_MAGIC_SZ);
 
-    BOOT_LOG_DBG("writing magic; fa_id=%d off=0x%lx (0x%lx)",
+    BOOT_LOG_DBG("boot_write_magic: fa_id=%d off=0x%lx (0x%lx)",
                  flash_area_get_id(fap), (unsigned long)off,
                  (unsigned long)(flash_area_get_off(fap) + off));
     rc = flash_area_write(fap, pad_off, &magic[0], BOOT_MAGIC_ALIGN_SIZE);
@@ -336,9 +336,14 @@ int boot_write_trailer(const struct flash_area* fap, uint32_t off,
     uint32_t align;
     int rc;
 
+    BOOT_LOG_DBG("boot_write_trailer: for %p at %d, size = %d",
+                 fap, off, inlen);
+
     align = flash_area_align(fap);
     align = ALIGN_UP(inlen, align);
     if (align > BOOT_MAX_ALIGN) {
+        /* This should never happen */
+        assert(0);
         return -1;
     }
     erased_val = flash_area_erased_val(fap);
@@ -549,10 +554,7 @@ int boot_set_next(const struct flash_area* fa, bool active, bool confirm) {
                 rc = BOOT_EBADVECT;
             }
             else {
-                /* The image slot is corrupt.  There is no way to recover, so erase the
-                 * slot to allow future upgrades.
-                 */
-                flash_area_erase(fa, 0, flash_area_get_size(fa));
+                /* This image will not be boot next time anyway */
                 rc = BOOT_EBADIMAGE;
             }
             break;
@@ -571,6 +573,9 @@ int boot_set_next(const struct flash_area* fa, bool active, bool confirm) {
     struct boot_swap_state slot_state;
     int rc;
 
+    BOOT_LOG_DBG("boot_set_next: fa %p active == %d, confirm == %d",
+                 fa, (int)active, (int)confirm);
+
     if (active) {
         /* The only way to set active slot for next boot is to confirm it,
          * as DirectXIP will conclude that, since slot has not been confirmed
@@ -581,6 +586,7 @@ int boot_set_next(const struct flash_area* fa, bool active, bool confirm) {
 
     rc = boot_read_swap_state(fa, &slot_state);
     if (rc != 0) {
+        BOOT_LOG_DBG("boot_set_next: error %d reading state", rc);
         return (rc);
     }
 
@@ -701,6 +707,8 @@ int boot_set_confirmed_multi(int image_index) {
 
     rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index), &fap);
     if (rc != 0) {
+        BOOT_LOG_DBG("boot_set_confirmed_multi: error %d opening image %d",
+                     rc, image_index);
         return (BOOT_EFLASH);
     }
 
@@ -724,28 +732,32 @@ int boot_set_confirmed(void) {
 }
 
 int boot_image_load_header(const struct flash_area* fa_p, struct image_header* hdr) {
-    uint32_t size;
-    int rc;
+    uint32_t size = 0;
+    int rc = flash_area_read(fa_p, 0, hdr, sizeof *hdr);
 
-    rc = flash_area_read(fa_p, 0, hdr, sizeof *hdr);
+    BOOT_LOG_DBG("boot_image_load_header: from %p, result %d", fa_p, rc);
+
     if (rc != 0) {
-        rc = BOOT_EFLASH;
         BOOT_LOG_ERR("Failed reading image header");
         return (BOOT_EFLASH);
     }
 
     if (hdr->ih_magic != IMAGE_MAGIC) {
         BOOT_LOG_ERR("Bad image magic 0x%lx", (unsigned long)hdr->ih_magic);
+
         return (BOOT_EBADIMAGE);
     }
 
     if (hdr->ih_flags & IMAGE_F_NON_BOOTABLE) {
         BOOT_LOG_ERR("Image not bootable");
+
         return (BOOT_EBADIMAGE);
     }
 
     if (!boot_u32_safe_add(&size, hdr->ih_img_size, hdr->ih_hdr_size) ||
         (size >= flash_area_get_size(fa_p))) {
+        BOOT_LOG_ERR("Image size bigger than designated area: %lu > %lu",
+                     (unsigned long)size, (unsigned long)flash_area_get_size(fa_p));
         return (BOOT_EBADIMAGE);
     }
 
