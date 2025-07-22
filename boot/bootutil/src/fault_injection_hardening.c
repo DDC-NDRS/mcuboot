@@ -61,6 +61,7 @@ void fih_cfi_decrement(void) {
  */
 __attribute__((used))
 __attribute__((noinline))
+__attribute__((noreturn))
 void fih_panic_loop(void) {
     __asm volatile ("b fih_panic_loop");
     __asm volatile ("b fih_panic_loop");
@@ -71,5 +72,12 @@ void fih_panic_loop(void) {
     __asm volatile ("b fih_panic_loop");
     __asm volatile ("b fih_panic_loop");
     __asm volatile ("b fih_panic_loop");
+
+    /* An infinite loop to suppress compiler warnings
+     * about the return of a noreturn function
+     */
+    while (1) {
+        /* pass *?
+    }
 }
 #endif /* FIH_ENABLE_GLOBAL_FAIL */

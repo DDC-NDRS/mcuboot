@@ -90,12 +90,6 @@ if(DEFINED CONFIG_ENABLE_MGMT_PERUSER)
   endif()
 endif()
 
-if(NOT DEFINED CONFIG_FLASH_PAGE_LAYOUT)
-  zephyr_library_sources(
-    flash_map_legacy.c
-    )
-endif()
-
 if(DEFINED CONFIG_BOOT_SHARE_BACKEND_RETENTION)
   zephyr_library_sources(
     shared_data.c
@@ -439,9 +433,17 @@ if(CONFIG_BOOT_ENCRYPTION_KEY_FILE AND NOT CONFIG_BOOT_ENCRYPTION_KEY_FILE STREQ
 endif()
 
 if(CONFIG_MCUBOOT_CLEANUP_ARM_CORE)
-zephyr_library_sources(
-  ${BOOT_DIR}/zephyr/arm_cleanup.c
-)
+  # ARM Cortex-M
+  zephyr_library_sources_ifdef(
+    CONFIG_CPU_CORTEX_M
+    ${BOOT_DIR}/zephyr/cleanup/arm_cortex_m.c
+  )
+
+  # ARM Cortex-R
+  zephyr_library_sources_ifdef(
+    CONFIG_ARMV7_R
+    ${BOOT_DIR}/zephyr/cleanup/arm_cortex_r.c
+  )
 endif()
 
 if(CONFIG_MCUBOOT_BOOT_BANNER)

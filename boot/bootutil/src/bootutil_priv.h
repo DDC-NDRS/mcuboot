@@ -280,12 +280,15 @@ struct boot_loader_state {
     struct slot_usage_t {
         /* Index of the slot chosen to be loaded */
         uint32_t active_slot;
-        bool     slot_available[BOOT_NUM_SLOTS];
+        bool slot_available[BOOT_NUM_SLOTS];
+
         #if defined(MCUBOOT_RAM_LOAD)
         /* Image destination and size for the active slot */
         uint32_t img_dst;
         uint32_t img_sz;
-        #elif defined(MCUBOOT_DIRECT_XIP_REVERT)
+        #endif
+
+        #if defined(MCUBOOT_DIRECT_XIP_REVERT) || defined(MCUBOOT_RAM_LOAD_REVERT)
         /* Swap status for the active slot */
         struct boot_swap_state swap_state;
         #endif
@@ -381,18 +384,14 @@ int boot_read_enc_key(const struct flash_area* fap, uint8_t slot,
                       struct boot_status* bs);
 #endif
 
-#ifdef MCUBOOT_SWAP_USING_SCRATCH
-/**
- * Finds the first sector of a given slot that holds image trailer data.
- *
- * @param state      Current bootloader's state.
- * @param slot       The index of the slot to consider.
- * @param trailer_sz The size of the trailer, in bytes.
- *
- * @return The index of the first sector of the slot that holds image trailer data.
+#if MCUBOOT_SWAP_USING_SCRATCH
+/*
+ * Similar to `boot_trailer_sz` but this function returns the space used to
+ * store status in the scratch partition. The scratch partition only stores
+ * status during the swap of the last sector from primary/secondary (which
+ * is the first swap operation) and thus only requires space for one swap.
  */
-size_t
-boot_get_first_trailer_sector(struct boot_loader_state *state, size_t slot, size_t trailer_sz);
+uint32_t boot_scratch_trailer_sz(uint32_t min_write_sz);
 #endif
 
 /**

@@ -999,7 +999,7 @@ out :
  *
  * @return 0 on success; nonzero on failure.
  */
-static int boot_update_security_counter(struct boot_loader_state *state, int slot,
+static int boot_update_security_counter(struct boot_loader_state* state, int slot,
                                         int hdr_slot_idx) {
     const struct flash_area* fap = NULL;
     uint32_t img_security_cnt;
@@ -1169,7 +1169,7 @@ done:
  *
  * @return          0 on success; nonzero on failure.
  */
-int boot_scramble_slot(const struct flash_area *fa, int slot) {
+int boot_scramble_slot(const struct flash_area* fa, int slot) {
     size_t size;
     int ret = 0;
 
@@ -2602,7 +2602,8 @@ static void print_loaded_images(struct boot_loader_state* state) {
 }
 #endif
 
-#if defined(MCUBOOT_DIRECT_XIP) && defined(MCUBOOT_DIRECT_XIP_REVERT)
+#if (defined(MCUBOOT_DIRECT_XIP) && defined(MCUBOOT_DIRECT_XIP_REVERT)) || \
+    (defined(MCUBOOT_RAM_LOAD) && defined(MCUBOOT_RAM_LOAD_REVERT))
 /**
  * Checks whether the active slot of the current image was previously selected
  * to run. Erases the image if it was selected but its execution failed,
@@ -2718,8 +2719,9 @@ fih_ret boot_load_and_validate_images(struct boot_loader_state* state) {
                 state->slot_usage[BOOT_CURR_IMG(state)].active_slot = NO_ACTIVE_SLOT;
                 continue;
             }
+            #endif /* MCUBOOT_DIRECT_XIP */
 
-            #ifdef MCUBOOT_DIRECT_XIP_REVERT
+            #if defined(MCUBOOT_DIRECT_XIP_REVERT) || defined(MCUBOOT_RAM_LOAD_REVERT)
             rc = boot_select_or_erase(state);
             if (rc != 0) {
                 /* The selected image slot has been erased. */
@@ -2727,8 +2729,7 @@ fih_ret boot_load_and_validate_images(struct boot_loader_state* state) {
                 state->slot_usage[BOOT_CURR_IMG(state)].active_slot = NO_ACTIVE_SLOT;
                 continue;
             }
-            #endif /* MCUBOOT_DIRECT_XIP_REVERT */
-            #endif /* MCUBOOT_DIRECT_XIP */
+            #endif /* MCUBOOT_DIRECT_XIP_REVERT || MCUBOOT_RAM_LOAD_REVERT */
 
             #ifdef MCUBOOT_RAM_LOAD
             /* Image is first loaded to RAM and authenticated there in order to
