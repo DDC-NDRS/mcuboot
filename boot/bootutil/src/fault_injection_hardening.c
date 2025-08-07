@@ -77,7 +77,7 @@ void fih_panic_loop(void) {
      * about the return of a noreturn function
      */
     while (1) {
-        /* pass *?
+        /* pass */
     }
 }
 #endif /* FIH_ENABLE_GLOBAL_FAIL */
