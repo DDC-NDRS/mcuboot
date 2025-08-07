@@ -124,6 +124,10 @@
 #define MCUBOOT_VERSION_CMP_USE_BUILD_NUMBER
 #endif
 
+#ifdef CONFIG_BOOT_VERSION_CMP_USE_SLOT_NUMBER
+#define MCUBOOT_VERSION_CMP_USE_SLOT_NUMBER
+#endif
+
 #ifdef CONFIG_BOOT_SWAP_SAVE_ENCTLV
 #define MCUBOOT_SWAP_SAVE_ENCTLV    1
 #endif
@@ -161,11 +165,28 @@
 #define MCUBOOT_ENCRYPT_X25519
 #endif
 
+#ifdef CONFIG_BOOT_ENCRYPT_ALG_AES_128
+#define MCUBOOT_AES_128
+#endif
+
+#ifdef CONFIG_BOOT_ENCRYPT_ALG_AES_256
+#define MCUBOOT_AES_256
+#endif
+
 /* Support for HMAC/HKDF using SHA512; this is used in key exchange where
  * HKDF is used for key expansion and HMAC is used for key verification.
  */
 #ifdef CONFIG_BOOT_HMAC_SHA512
 #define MCUBOOT_HMAC_SHA512
+#endif
+
+/* Turn off check of public key hash against compiled in key
+ * before attempting signature verification. When there is only
+ * one key, matching is pointless, the signature may just be
+ * verified with the only key that there is.
+ */
+#ifdef CONFIG_BOOT_BYPASS_KEY_MATCH
+#define MCUBOOT_BYPASS_KEY_MATCH
 #endif
 
 #ifdef CONFIG_BOOT_DECOMPRESSION
@@ -263,6 +284,10 @@
 
 #ifdef CONFIG_BOOT_FLASH_AREA_HOOKS
 #define MCUBOOT_FLASH_AREA_HOOKS
+#endif
+
+#ifdef CONFIG_FIND_NEXT_SLOT_HOOKS
+#define MCUBOOT_FIND_NEXT_SLOT_HOOKS
 #endif
 
 #ifdef CONFIG_MCUBOOT_VERIFY_IMG_ADDRESS

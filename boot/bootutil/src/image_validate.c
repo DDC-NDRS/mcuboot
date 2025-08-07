@@ -54,10 +54,6 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #if defined(MCUBOOT_SIGN_EC256)
 #include "mbedtls/ecdsa.h"
 #endif
-#if defined(MCUBOOT_ENC_IMAGES) || defined(MCUBOOT_SIGN_RSA) || \
-    defined(MCUBOOT_SIGN_EC256)
-#include "mbedtls/asn1.h"
-#endif
 
 #include "bootutil_priv.h"
 
@@ -288,6 +284,8 @@ bootutil_img_hash(struct boot_loader_state* state,
 #   define KEY_BUF_SIZE         (SIG_BUF_SIZE + 24)
 #endif /* !MCUBOOT_HW_KEY */
 
+#if !defined(MCUBOOT_BYPASS_KEY_MATCH)
+/* Find functions are only needed when key is checked first */
 #if !defined(MCUBOOT_HW_KEY)
 static int
 bootutil_find_key(uint8_t* keyhash, uint8_t keyhash_len) {
@@ -356,6 +354,18 @@ bootutil_find_key(uint8_t image_index, uint8_t* key, uint16_t key_len) {
 #endif /* !MCUBOOT_HW_KEY */
 #endif /* !MCUBOOT_BUILTIN_KEY */
 #endif /* EXPECTED_SIG_TLV */
+#else  /* !MCUBOOT_BYPASS_KEY_MATCH */
+static inline int
+bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
+{
+    (void)image_index;
+    (void)key;
+    (void)key_len;
+
+    /* There is only one key, so it always matches */
+    return 0;
+}
+#endif /* !MCUBOOT_BYPASS_KEY_MATCH */
 
 /**
  * Reads the value of an image's security counter.
@@ -740,6 +750,8 @@ bootutil_img_validate(struct boot_loader_state* state,
             fih_rc = fih_ret_encode_zero_equality(img_security_cnt <
                                                   (uint32_t)fih_int_decode(security_cnt));
             if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+                BOOT_LOG_ERR("Image security counter value %u lower than monotonic value %u",
+                             img_security_cnt, (uint32_t)fih_int_decode(security_cnt));
                 FIH_SET(fih_rc, FIH_FAILURE);
                 goto out;
             }
