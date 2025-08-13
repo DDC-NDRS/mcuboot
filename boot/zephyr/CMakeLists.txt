@@ -100,6 +100,9 @@ endif()
 zephyr_library_include_directories(${BOOT_DIR}/bootutil/include)
 zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/image_validate.c
+  ${BOOT_DIR}/bootutil/src/bootutil_find_key.c
+  ${BOOT_DIR}/bootutil/src/bootutil_img_hash.c
+  ${BOOT_DIR}/bootutil/src/bootutil_img_security_cnt.c
   ${BOOT_DIR}/bootutil/src/tlv.c
   ${BOOT_DIR}/bootutil/src/encrypted.c
   ${BOOT_DIR}/bootutil/src/image_rsa.c
@@ -281,8 +284,13 @@ elseif(CONFIG_BOOT_SIGNATURE_TYPE_ED25519 OR CONFIG_BOOT_ENCRYPT_X25519)
       ${FIAT_DIR}/src/curve25519.c
     )
   else()
+    if(MBEDTLS_ASN1_DIR)
+      zephyr_library_sources(
+        ${MBEDTLS_ASN1_DIR}/src/asn1parse.c
+      )
+    endif()
+
     zephyr_library_sources(
-      ${MBEDTLS_ASN1_DIR}/src/asn1parse.c
       ${BOOT_DIR}/bootutil/src/ed25519_psa.c
     )
   endif()
