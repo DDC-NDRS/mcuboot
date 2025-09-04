@@ -32,6 +32,8 @@
 #include <string.h>
 #include <errno.h>
 
+#include <limits.h>
+
 #include <flash_map_backend/flash_map_backend.h>
 
 #include "bootutil/image.h"
@@ -48,13 +50,6 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #ifdef MCUBOOT_ENC_IMAGES
 #include "bootutil/enc_key.h"
 #endif
-#if defined(MCUBOOT_SIGN_RSA)
-#include "mbedtls/rsa.h"
-#endif
-#if defined(MCUBOOT_SIGN_EC256)
-#include "mbedtls/ecdsa.h"
-#endif
-
 #include "bootutil_priv.h"
 
 /*
@@ -125,12 +120,21 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
  *
  * Value of TLV does not matter, presence decides.
  */
-static int bootutil_check_for_pure(const struct image_header* hdr,
-                                   const struct flash_area* fap) {
+#if defined(MCUBOOT_SWAP_USING_OFFSET)
+static int bootutil_check_for_pure(const struct image_header* hdr, const struct flash_area* fap,
+                                   uint32_t start_off)
+#else
+static int bootutil_check_for_pure(const struct image_header* hdr, const struct flash_area* fap)
+#endif
+{
     struct image_tlv_iter it;
     uint32_t off;
     uint16_t len;
     int32_t rc;
+
+    #if defined(MCUBOOT_SWAP_USING_OFFSET)
+    it.start_off = start_off;
+    #endif
 
     rc = bootutil_tlv_iter_begin(&it, hdr, fap, IMAGE_TLV_SIG_PURE, false);
     if (rc) {
@@ -227,6 +231,9 @@ bootutil_img_validate(struct boot_loader_state* state,
     #endif
     int rc = 0;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
+    #if defined(MCUBOOT_SIGN_PURE)
+    uintptr_t base = 0;
+    #endif
     #ifdef MCUBOOT_HW_ROLLBACK_PROT
     fih_int  security_cnt = fih_int_encode(INT_MAX);
     uint32_t img_security_cnt = 0;
@@ -247,17 +254,21 @@ bootutil_img_validate(struct boot_loader_state* state,
     }
 #endif
 
+    #if defined(MCUBOOT_SWAP_USING_OFFSET)
+    it.start_off = boot_get_state_secondary_offset(state, fap);
+    #endif
+
     #if defined(MCUBOOT_SIGN_PURE)
     /* If Pure type signature is expected then it has to be there */
+    #if defined(MCUBOOT_SWAP_USING_OFFSET)
+    rc = bootutil_check_for_pure(hdr, fap, it.start_off);
+    #else
     rc = bootutil_check_for_pure(hdr, fap);
+    #endif
     if (rc != 0) {
         BOOT_LOG_DBG("bootutil_img_validate: pure expected");
         goto out;
     }
-    #endif
-
-    #if defined(MCUBOOT_SWAP_USING_OFFSET)
-    it.start_off = boot_get_state_secondary_offset(state, fap);
     #endif
 
     rc = bootutil_tlv_iter_begin(&it, hdr, fap, IMAGE_TLV_ANY, false);
@@ -392,11 +403,16 @@ bootutil_img_validate(struct boot_loader_state* state,
             FIH_CALL(bootutil_verify_sig, valid_signature, hash, sizeof(hash),
                                                            buf, len, key_id);
             #else
+            rc = flash_device_base(flash_area_get_device_id(fap), &base);
+            if (rc != 0) {
+                goto out;
+            }
+
             /* Directly check signature on the image, by using the mapping of
              * a device to memory. The pointer is beginning of image in flash,
              * so offset of area, the range is header + image + protected tlvs.
              */
-            FIH_CALL(bootutil_verify_img, valid_signature, (void *)flash_area_get_off(fap),
+            FIH_CALL(bootutil_verify_img, valid_signature, (void *)(base + flash_area_get_off(fap)),
                      hdr->ih_hdr_size + hdr->ih_img_size + hdr->ih_protect_tlv_size,
                      buf, len, key_id);
             #endif
@@ -440,6 +456,19 @@ bootutil_img_validate(struct boot_loader_state* state,
                 FIH_SET(fih_rc, FIH_FAILURE);
                 goto out;
             }
+
+            #ifdef MCUBOOT_HW_ROLLBACK_PROT_COUNTER_LIMITED
+            if (img_security_cnt > (uint32_t)fih_int_decode(security_cnt)) {
+                FIH_CALL(boot_nv_security_counter_is_update_possible, fih_rc, image_index,
+                         img_security_cnt);
+                if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+                    FIH_SET(fih_rc, FIH_FAILURE);
+                    BOOT_LOG_ERR("Security counter update is not possible, possibly the maximum "
+                                 "number of security updates has been reached.");
+                    goto out;
+                }
+            }
+            #endif
 
             /* The image's security counter has been successfully verified. */
             security_counter_valid = fih_rc;
