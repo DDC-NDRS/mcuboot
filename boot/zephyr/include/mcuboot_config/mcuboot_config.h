@@ -150,6 +150,11 @@
 #define MCUBOOT_HAVE_LOGGING    1
 #endif
 
+/* Enable/disable non-protected TLV check against allow list */
+#ifdef CONFIG_MCUBOOT_USE_TLV_ALLOW_LIST
+#define MCUBOOT_USE_TLV_ALLOW_LIST 1
+#endif
+
 #ifdef CONFIG_BOOT_ENCRYPT_RSA
 #define MCUBOOT_ENC_IMAGES
 #define MCUBOOT_ENCRYPT_RSA
@@ -230,6 +235,14 @@
 
 #ifdef CONFIG_MCUBOOT_HW_DOWNGRADE_PREVENTION_COUNTER_LIMITED
 #define MCUBOOT_HW_ROLLBACK_PROT_COUNTER_LIMITED
+#endif
+
+#ifdef CONFIG_MCUBOOT_UUID_VID
+#define MCUBOOT_UUID_VID
+#endif
+
+#ifdef CONFIG_MCUBOOT_UUID_CID
+#define MCUBOOT_UUID_CID
 #endif
 
 #ifdef CONFIG_MEASURED_BOOT
@@ -417,10 +430,8 @@
 #endif
 
 /* Support 32-byte aligned flash sizes */
-#if DT_HAS_CHOSEN(zephyr_flash)
-#if DT_PROP_OR(DT_CHOSEN(zephyr_flash), write_block_size, 0) > 8
-#define MCUBOOT_BOOT_MAX_ALIGN      DT_PROP(DT_CHOSEN(zephyr_flash), write_block_size)
-#endif
+#if CONFIG_MCUBOOT_BOOT_MAX_ALIGN > 8
+#define MCUBOOT_BOOT_MAX_ALIGN CONFIG_MCUBOOT_BOOT_MAX_ALIGN
 #endif
 
 #ifdef CONFIG_MCUBOOT_BOOTUTIL_LIB_FOR_DIRECT_XIP
@@ -473,7 +484,8 @@
 
 #define MCUBOOT_WATCHDOG_SETUP()            \
     do {                                    \
-        const struct device* wdt = DEVICE_DT_GET(DT_ALIAS(watchdog0));  \
+        const struct device* wdt =          \
+            DEVICE_DT_GET(DT_ALIAS(watchdog0)); \
         if (device_is_ready(wdt)) {         \
             wdt_setup(wdt, 0);              \
         }                                   \
@@ -481,7 +493,8 @@
 
 #define MCUBOOT_WATCHDOG_FEED()             \
     do {                                    \
-        const struct device* wdt = DEVICE_DT_GET(DT_ALIAS(watchdog0));  \
+        const struct device* wdt =          \
+            DEVICE_DT_GET(DT_ALIAS(watchdog0)); \
         if (device_is_ready(wdt)) {         \
             wdt_feed(wdt, 0);               \
         }                                   \
