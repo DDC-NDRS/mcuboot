@@ -81,6 +81,13 @@ static struct image_max_size image_max_sizes[BOOT_IMAGE_NUMBER] = {0};
 #define TARGET_STATIC
 #endif
 
+#if defined(MCUBOOT_VERIFY_IMG_ADDRESS) && defined(MCUBOOT_CHECK_HEADER_LOAD_ADDRESS)
+#warning MCUBOOT_CHECK_HEADER_LOAD_ADDRESS takes precedence over MCUBOOT_VERIFY_IMG_ADDRESS
+#endif
+
+/* Valid only for ARM Cortext M */
+#define RESET_OFFSET    (2 * sizeof(uin32_t))
+
 #if BOOT_MAX_ALIGN > 1024
 #define BUF_SZ BOOT_MAX_ALIGN
 #else
@@ -548,7 +555,7 @@ boot_verify_slot_dependencies(struct boot_loader_state* state, uint32_t slot) {
 
         #ifdef MCUBOOT_VERSION_CMP_USE_SLOT_NUMBER
         /* Validate against possible dependency slot values. */
-        switch(dep->slot) {
+        switch(dep.slot) {
             case VERSION_DEP_SLOT_ACTIVE :
             case VERSION_DEP_SLOT_PRIMARY :
             case VERSION_DEP_SLOT_SECONDARY :
@@ -1003,25 +1010,43 @@ static fih_ret boot_validate_slot(struct boot_loader_state* state, int slot,
         goto out;
     }
 
-    #if (MCUBOOT_IMAGE_NUMBER > 1) && !defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_VERIFY_IMG_ADDRESS)
+    #if defined(MCUBOOT_VERIFY_IMG_ADDRESS) && !defined(MCUBOOT_ENC_IMAGES) || \
+        defined(MCUBOOT_CHECK_HEADER_LOAD_ADDRESS)
     /* Verify that the image in the secondary slot has a reset address
      * located in the primary slot. This is done to avoid users incorrectly
      * overwriting an application written to the incorrect slot.
      * This feature is only supported by ARM platforms.
      */
     if (fap == BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY)) {
-        const struct flash_area* pri_fa = BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY);
         struct image_header* secondary_hdr = boot_img_hdr(state, slot);
-        uint32_t reset_value = 0;
-        uint32_t reset_addr  = secondary_hdr->ih_hdr_size + sizeof(reset_value);
+        uint32_t internal_img_addr = 0; /* either the reset handler addres or the image beginning addres */
+        uint32_t min_addr;
+        uint32_t max_addr;
 
-        if (flash_area_read(fap, reset_addr, &reset_value, sizeof(reset_value)) != 0) {
+        min_addr = flash_area_get_off(BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY));
+        max_addr = flash_area_get_size(BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY)) + min_addr;
+
+        /* MCUBOOT_CHECK_HEADER_LOAD_ADDRESS takes priority over MCUBOOT_VERIFY_IMG_ADDRESS */
+        #ifdef MCUBOOT_CHECK_HEADER_LOAD_ADDRESS
+        internal_img_addr = secondary_hdr->ih_load_addr;
+        #else
+        /* This is platform specific code that should not be here */
+        const uint32_t offset = secondary_hdr->ih_hdr_size + RESET_OFFSET;
+        BOOT_LOG_DBG("Getting image %d internal addr from offset %u",
+                     BOOT_CURR_IMG(state), offset);
+        if (flash_area_read(fap, offset, &internal_img_addr, sizeof(internal_img_addr)) != 0)
+            BOOT_LOG_ERR("Failed to read image %d load address", BOOT_CURR_IMG(state));
             fih_rc = FIH_NO_BOOTABLE_IMAGE;
             goto out;
         }
+        #endif
 
-        if ((reset_value < pri_fa->fa_off) || (reset_value > (pri_fa->fa_off + pri_fa->fa_size))) {
-            BOOT_LOG_ERR("Reset address of image in secondary slot is not in the primary slot");
+        BOOT_LOG_DBG("Image %d expected load address 0x%x", BOOT_CURR_IMG(state), internal_img_addr);
+        BOOT_LOG_DBG("Check 0x%x is within [min_addr, max_addr] = [0x%x, 0x%x)",
+                     internal_img_addr, min_addr, max_addr);
+        if (internal_img_addr < min_addr || internal_img_addr >= max_addr) {
+            BOOT_LOG_ERR("Binary in secondary slot of image %d is not designated for the primary slot",
+                         BOOT_CURR_IMG(state));
             BOOT_LOG_ERR("Erasing image from secondary slot");
 
             /* The vector table in the image located in the secondary
@@ -1706,6 +1731,8 @@ static int boot_swap_image(struct boot_loader_state* state, struct boot_status* 
 
         #ifdef MCUBOOT_ENC_IMAGES
         for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
+            boot_enc_init(BOOT_CURR_ENC(state), slot);
+
             rc = boot_read_enc_key(fap, slot, bs);
             assert(rc == 0);
 
@@ -1714,8 +1741,6 @@ static int boot_swap_image(struct boot_loader_state* state, struct boot_status* 
                     break;
                 }
             }
-
-            boot_enc_init(BOOT_CURR_ENC(state), slot);
 
             if (i != BOOT_ENC_KEY_SIZE) {
                 boot_enc_set_key(BOOT_CURR_ENC(state), slot, bs);
