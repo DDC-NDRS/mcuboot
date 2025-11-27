@@ -253,7 +253,7 @@ config BOOT_SIGNATURE_TYPE_RSA
 	select BOOT_USE_MBEDTLS
 	select MBEDTLS
 	select MBEDTLS_ASN1_PARSE_C if MBEDTLS_BUILTIN
-	select MBEDTLS_MD if MBEDTLS_BUILTIN
+	select MBEDTLS_MD_C if MBEDTLS_BUILTIN
 	select MBEDTLS_RSA_C if MBEDTLS_BUILTIN
 	select MBEDTLS_PKCS1_V15 if MBEDTLS_BUILTIN
 	select MBEDTLS_PKCS1_V21 if MBEDTLS_BUILTIN
@@ -1109,11 +1109,6 @@ config BOOT_WATCHDOG_FEED_NRFX_WDT
 	depends on SOC_FAMILY_NORDIC_NRF
 	# for nRF nrfx based implementation is available
 	imply NRFX_WDT
-	imply NRFX_WDT0
-	imply NRFX_WDT1
-	imply NRFX_WDT30
-	imply NRFX_WDT31
-	imply NRFX_WDT010
 
 config BOOT_IMAGE_ACCESS_HOOKS
 	bool "Hooks for overriding MCUboot's native routines"
