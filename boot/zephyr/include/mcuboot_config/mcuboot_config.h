@@ -10,6 +10,7 @@
 #ifndef __MCUBOOT_CONFIG_H__
 #define __MCUBOOT_CONFIG_H__
 
+#include <zephyr/autoconf.h> /* #CUSTOM@NDRS */
 #include <zephyr/devicetree.h>
 
 #ifdef CONFIG_BOOT_SIGNATURE_TYPE_RSA

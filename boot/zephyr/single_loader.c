@@ -180,7 +180,7 @@ const struct image_max_size *boot_get_max_app_size(void)
 /**
  * Gather information on image and prepare for booting.
  *
- * @parami[out] rsp Parameters for booting image, on success
+ * @param[out] rsp Parameters for booting image, on success
  *
  * @return FIH_SUCCESS on success; nonzero on failure.
  */

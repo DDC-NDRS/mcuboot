@@ -94,7 +94,7 @@ boot_image_validate_once(const struct flash_area *fa_p,
 /**
  * Gather information on image and prepare for booting.
  *
- * @parami[out]	rsp	Parameters for booting image, on success
+ * @param[out]	rsp	Parameters for booting image, on success
  *
  * @return		FIH_SUCCESS on success; nonzero on failure.
  */

@@ -1454,7 +1454,8 @@ static void boot_prepare_image_for_update(struct boot_loader_state* state,
     /* If the current image's slots aren't compatible, no swap is possible.
      * Just boot into primary slot.
      */
-    if (boot_slots_compatible(state)) {                         /* MCUBOOT_SEQ04 */
+    rc = boot_slots_compatible(state);
+    if (rc == 1) {                          /* MCUBOOT_SEQ04 */
         boot_status_reset(bs);
 
         #ifndef MCUBOOT_OVERWRITE_ONLY
@@ -1747,11 +1748,11 @@ fih_ret /**/context_boot_go(struct boot_loader_state* state, struct boot_rsp* rs
         #endif
         /* Determine the sector layout of the image slots and scratch area. */
         rc = boot_read_sectors(state, sectors);
-            if (rc != 0) {
+        if (rc != 0) {
             BOOT_LOG_WRN("Failed reading sectors; BOOT_MAX_IMG_SECTORS=%d"
                           " - too small?", BOOT_MAX_IMG_SECTORS);
             BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
-            }
+        }
 
         /* Unless there was an error when determining the sector layout of the primary slot,
          * determine swap type and complete swap if it has been aborted.
