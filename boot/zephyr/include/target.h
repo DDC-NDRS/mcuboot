@@ -28,18 +28,34 @@
 #endif /* !defined(MCUBOOT_TARGET_CONFIG) */
 
 /*
- * Sanity check the target support.
+ * Sanity check the target support. Split to pinpoint missing prerequisites.
  */
-#if (!defined(CONFIG_XTENSA) && !defined(CONFIG_SOC_SERIES_NRF54HX) && \
-    !DT_HAS_CHOSEN(zephyr_flash_controller)) || \
-    (defined(CONFIG_XTENSA) && !DT_NODE_EXISTS(DT_INST(0, jedec_spi_nor)) && \
-    !defined(CONFIG_SOC_FAMILY_ESPRESSIF_ESP32)) || \
-    (defined(CONFIG_SOC_SERIES_NRF54HX) && !DT_HAS_CHOSEN(zephyr_flash)) || \
-    !defined(FLASH_ALIGN) ||                  \
-    !(FIXED_PARTITION_EXISTS(slot0_partition)) || \
-    !(FIXED_PARTITION_EXISTS(slot1_partition) || CONFIG_SINGLE_APPLICATION_SLOT) || \
-    (defined(CONFIG_BOOT_SWAP_USING_SCRATCH) && !FIXED_PARTITION_EXISTS(scratch_partition))
-#error "Target support is incomplete; cannot build mcuboot."
+#if !defined(CONFIG_XTENSA) && !defined(CONFIG_SOC_SERIES_NRF54HX) && !DT_HAS_CHOSEN(zephyr_flash_controller)
+#error "Missing zephyr_flash_controller chosen node; set DT chosen or enable appropriate SoC series."
+#endif
+
+#if defined(CONFIG_XTENSA) && !DT_NODE_EXISTS(DT_INST(0, jedec_spi_nor)) && !defined(CONFIG_SOC_FAMILY_ESPRESSIF_ESP32)
+#error "Xtensa target missing JEDEC SPI NOR instance or ESP32 family config."
+#endif
+
+#if defined(CONFIG_SOC_SERIES_NRF54HX) && !DT_HAS_CHOSEN(zephyr_flash)
+#error "nRF54HX target missing zephyr_flash chosen node."
+#endif
+
+#if !defined(FLASH_ALIGN)
+#error "Missing FLASH_ALIGN definition."
+#endif
+
+#if !FIXED_PARTITION_EXISTS(slot0_partition)
+#error "Missing slot0_partition definition."
+#endif
+
+#if !(FIXED_PARTITION_EXISTS(slot1_partition) || CONFIG_SINGLE_APPLICATION_SLOT)
+#error "Missing slot1_partition and CONFIG_SINGLE_APPLICATION_SLOT is not set."
+#endif
+
+#if defined(CONFIG_BOOT_SWAP_USING_SCRATCH) && !FIXED_PARTITION_EXISTS(scratch_partition)
+#error "Scratch swap requires scratch_partition definition."
 #endif
 
 #if (MCUBOOT_IMAGE_NUMBER == 2) && (!(FIXED_PARTITION_EXISTS(slot2_partition)) || \
