@@ -30,7 +30,7 @@
 /*
  * Sanity check the target support. Split to pinpoint missing prerequisites.
  */
-#if !defined(CONFIG_XTENSA) && !defined(CONFIG_SOC_SERIES_NRF54HX) && !DT_HAS_CHOSEN(zephyr_flash_controller)
+#if !defined(CONFIG_XTENSA) && !defined(CONFIG_SOC_SERIES_NRF54H) && !DT_HAS_CHOSEN(zephyr_flash_controller)
 #error "Missing zephyr_flash_controller chosen node; set DT chosen or enable appropriate SoC series."
 #endif
 
@@ -38,7 +38,7 @@
 #error "Xtensa target missing JEDEC SPI NOR instance or ESP32 family config."
 #endif
 
-#if defined(CONFIG_SOC_SERIES_NRF54HX) && !DT_HAS_CHOSEN(zephyr_flash)
+#if defined(CONFIG_SOC_SERIES_NRF54H) && !DT_HAS_CHOSEN(zephyr_flash)
 #error "nRF54HX target missing zephyr_flash chosen node."
 #endif
 
