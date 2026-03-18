@@ -22,6 +22,7 @@
 #include <zephyr/devicetree.h>
 #include <soc.h>
 #include <zephyr/storage/flash_map.h>
+#include <zephyr/devicetree/partitions.h>
 
 #define FLASH_ALIGN FLASH_WRITE_BLOCK_SIZE
 
@@ -46,20 +47,20 @@
 #error "Missing FLASH_ALIGN definition."
 #endif
 
-#if !FIXED_PARTITION_EXISTS(slot0_partition)
+#if !PARTITION_EXISTS(slot0_partition)
 #error "Missing slot0_partition definition."
 #endif
 
-#if !(FIXED_PARTITION_EXISTS(slot1_partition) || CONFIG_SINGLE_APPLICATION_SLOT)
+#if !(PARTITION_EXISTS(slot1_partition) || CONFIG_SINGLE_APPLICATION_SLOT)
 #error "Missing slot1_partition and CONFIG_SINGLE_APPLICATION_SLOT is not set."
 #endif
 
-#if defined(CONFIG_BOOT_SWAP_USING_SCRATCH) && !FIXED_PARTITION_EXISTS(scratch_partition)
+#if defined(CONFIG_BOOT_SWAP_USING_SCRATCH) && !PARTITION_EXISTS(scratch_partition)
 #error "Scratch swap requires scratch_partition definition."
 #endif
 
-#if (MCUBOOT_IMAGE_NUMBER == 2) && (!(FIXED_PARTITION_EXISTS(slot2_partition)) || \
-                                     !(FIXED_PARTITION_EXISTS(slot3_partition)))
+#if (MCUBOOT_IMAGE_NUMBER == 2) && (!(PARTITION_EXISTS(slot2_partition)) || \
+                                     !(PARTITION_EXISTS(slot3_partition)))
 #error "Target support is incomplete; cannot build mcuboot."
 #endif
 

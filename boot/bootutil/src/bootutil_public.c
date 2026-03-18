@@ -755,7 +755,8 @@ int boot_image_load_header(const struct flash_area* fa_p, struct image_header* h
     }
 
     if (!boot_u32_safe_add(&size, hdr->ih_img_size, hdr->ih_hdr_size) ||
-        (size >= flash_area_get_size(fa_p))) {
+        !boot_u32_safe_add(&size, size, hdr->ih_protect_tlv_size) ||
+        size >= flash_area_get_size(fa_p)) {
         BOOT_LOG_ERR("Image size bigger than designated area: %lu > %lu",
                      (unsigned long)size, (unsigned long)flash_area_get_size(fa_p));
         return (BOOT_EBADIMAGE);
