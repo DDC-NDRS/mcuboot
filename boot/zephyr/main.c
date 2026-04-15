@@ -170,7 +170,10 @@ static void do_boot(struct boot_rsp* rsp) {
 
     /* Jump to flash image */
     rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
-    assert(rc == 0);
+    if (rc != 0) {
+        BOOT_LOG_DBG("Error getting flash device base. rc = %d", rc);
+        FIH_PANIC;
+    }
 
     vt = (struct arm_vector_table *)(flash_base +
                                      rsp->br_image_off +
@@ -373,7 +376,10 @@ static void do_boot(struct boot_rsp* rsp) {
     int rc;
 
     rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
-    assert(rc == 0);
+    if (rc != 0) {
+        BOOT_LOG_DBG("Error getting flash device base. rc = %d", rc);
+        FIH_PANIC;
+    }
 
     vt = (struct arc_vector_table *)(flash_base + rsp->br_image_off +
                      rsp->br_hdr->ih_hdr_size);
@@ -399,7 +405,10 @@ static void do_boot(struct boot_rsp* rsp) {
     int rc;
 
     rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
-    assert(rc == 0);
+    if (rc != 0) {
+        BOOT_LOG_DBG("Error getting flash device base. rc = %d", rc);
+        FIH_PANIC;
+    }
 
     start = (void*)(flash_base + rsp->br_image_off +
                     rsp->br_hdr->ih_hdr_size);
@@ -490,9 +499,14 @@ static void boot_serial_enter(void) {
 
     BOOT_LOG_INF("Enter the serial recovery mode");
     rc = boot_console_init();
-    __ASSERT(rc == 0, "Error initializing boot console.\n");
+    if (rc != 0) {
+        BOOT_LOG_DBG("Error initializing boot console. rc = %d", rc);
+        FIH_PANIC;
+    }
+
     boot_serial_start(&boot_funcs);
-    __ASSERT(0, "Bootloader serial process was terminated unexpectedly.\n");
+    BOOT_LOG_DBG("Bootloader serial process was terminated unexpectedly");
+    FIH_PANIC;
 }
 #endif
 
