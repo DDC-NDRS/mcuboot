@@ -597,7 +597,7 @@ int boot_set_next(const struct flash_area* fa, bool active, bool confirm) {
             if (rc != 0) {
                 break;
             }
-            /* Pass */
+            /* fallthrough */
 
         case BOOT_MAGIC_GOOD :
             if (confirm) {
