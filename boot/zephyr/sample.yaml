@@ -47,6 +47,12 @@ tests:
     integration_platforms:
       - nrf52840dk/nrf52840
     tags: bootloader_mcuboot
+  sample.bootloader.mcuboot.serial_recovery_raw:
+    extra_args: EXTRA_CONF_FILE=serial_recovery_raw.conf
+    platform_allow:  nrf52840dk/nrf52840
+    integration_platforms:
+      - nrf52840dk/nrf52840
+    tags: bootloader_mcuboot
   sample.bootloader.mcuboot.serial_recovery_all_options:
     extra_args: EXTRA_CONF_FILE=serial_recovery.conf
     extra_configs:
@@ -54,6 +60,7 @@ tests:
       - CONFIG_ENABLE_MGMT_PERUSER=y
       - CONFIG_BOOT_MGMT_CUSTOM_STORAGE_ERASE=y
       - CONFIG_BOOT_MGMT_ECHO=y
+      - CONFIG_BOOT_MGMT_MCUMGR_PARAMS=y
       - CONFIG_BOOT_SERIAL_IMG_GRP_IMAGE_STATE=y
       - CONFIG_BOOT_SERIAL_IMG_GRP_SLOT_INFO=y
     platform_allow:  nrf52840dk/nrf52840
@@ -107,6 +114,14 @@ tests:
   sample.bootloader.mcuboot.swap_move:
     extra_args: EXTRA_CONF_FILE=./swap_move.conf
     platform_allow:  nrf52840dk/nrf52840
+    integration_platforms:
+      - nrf52840dk/nrf52840
+    tags: bootloader_mcuboot
+  sample.bootloader.mcuboot.two_signing_keys:
+    extra_configs:
+      - CONFIG_BOOT_SIGNATURE_TYPE_ED25519=y
+      - CONFIG_BOOT_SIGNATURE_KEY_FILE="root-ed25519.pem,root-ed25519-2-pub.pem"
+    platform_allow: nrf52840dk/nrf52840
     integration_platforms:
       - nrf52840dk/nrf52840
     tags: bootloader_mcuboot

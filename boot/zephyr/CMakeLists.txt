@@ -73,6 +73,18 @@ target_sources(app PRIVATE
   watchdog.c
 )
 
+if(CONFIG_ARM)
+  target_sources(app PRIVATE arch/arm.c)
+elseif(CONFIG_SOC_FAMILY_ESPRESSIF_ESP32)
+  target_sources(app PRIVATE arch/esp32.c)
+elseif(CONFIG_XTENSA)
+  target_sources(app PRIVATE arch/xtensa.c)
+elseif(CONFIG_ARC)
+  target_sources(app PRIVATE arch/arc.c)
+else()
+  target_sources(app PRIVATE arch/default.c)
+endif()
+
 if(CONFIG_BOOT_SHARE_BACKEND_RETENTION)
   zephyr_sources(shared_data.c)
 endif()
@@ -118,7 +130,11 @@ endif()
 zephyr_link_libraries(MCUBOOT_BOOTUTIL)
 
 if(CONFIG_BOOT_FIH_PROFILE_HIGH)
-  zephyr_sources(${BOOT_DIR}/bootutil/src/fault_injection_hardening_delay_rng_mbedtls.c)
+  if(CONFIG_BOOT_USE_PSA_CRYPTO)
+    zephyr_sources(${BOOT_DIR}/bootutil/src/fault_injection_hardening_delay_rng_psa.c)
+  else()
+    zephyr_sources(${BOOT_DIR}/bootutil/src/fault_injection_hardening_delay_rng_mbedtls.c)
+  endif()
 endif()
 
 if(CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
@@ -316,17 +332,6 @@ endif()
 
 if(NOT CONFIG_BOOT_SIGNATURE_TYPE_NONE AND NOT CONFIG_BOOT_BUILTIN_KEY AND NOT
   CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
-  set(key_file "${CONFIG_BOOT_SIGNATURE_KEY_FILE}")
-  string(CONFIGURE "${key_file}" key_file)
-
-  if(IS_ABSOLUTE ${key_file})
-    set(signing_key_file ${key_file})
-  elseif(EXISTS ${APPLICATION_CONFIG_DIR}/${key_file})
-    set(signing_key_file ${APPLICATION_CONFIG_DIR}/${key_file})
-  else()
-    set(signing_key_file ${MCUBOOT_DIR}/${key_file})
-  endif()
-  message("MCUBoot bootloader key file: ${signing_key_file}")
 
   set(mcuboot_default_signature_files
     ${MCUBOOT_DIR}/root-ec-p256-pkcs8.pem
@@ -338,26 +343,64 @@ if(NOT CONFIG_BOOT_SIGNATURE_TYPE_NONE AND NOT CONFIG_BOOT_BUILTIN_KEY AND NOT
     ${MCUBOOT_DIR}/root-ec-p256.pem
   )
 
-  # Emit a warning if using one of the default MCUboot key files
-  if(${signing_key_file} IN_LIST mcuboot_default_signature_files)
-    message(WARNING "WARNING: Using default MCUboot signing key file, this file is for debug use only and is not secure!")
-  endif()
+  # Keys are comma-separated in CONFIG_BOOT_SIGNATURE_KEY_FILE (semicolons do
+  # not survive sysbuild); convert to a CMake list (semicolon-separated) here.
+  string(REPLACE "," ";" mcuboot_key_files "${CONFIG_BOOT_SIGNATURE_KEY_FILE}")
+  list(LENGTH mcuboot_key_files mcuboot_sign_key_count)
 
-  set(generated_pubkey ${ZEPHYR_BINARY_DIR}/autogen-pubkey.c)
-  add_custom_command(
-    OUTPUT ${generated_pubkey}
-    COMMAND
-    ${PYTHON_EXECUTABLE}
-    ${MCUBOOT_DIR}/scripts/imgtool.py
-    getpub
-    -k
-    ${signing_key_file}
-    > ${generated_pubkey}
-    DEPENDS ${signing_key_file}
-  )
-  target_sources(app PRIVATE
-    ${generated_pubkey}
-  )
+  set(key_index 0)
+  foreach(raw_key_path IN LISTS mcuboot_key_files)
+    string(CONFIGURE "${raw_key_path}" key_path)
+
+    if(IS_ABSOLUTE ${key_path})
+      set(resolved_key_path ${key_path})
+    elseif(EXISTS ${APPLICATION_CONFIG_DIR}/${key_path})
+      set(resolved_key_path ${APPLICATION_CONFIG_DIR}/${key_path})
+    else()
+      set(resolved_key_path ${MCUBOOT_DIR}/${key_path})
+    endif()
+
+    if(key_index EQUAL 0)
+      set(signing_key_file ${resolved_key_path})
+      set(name_suffix_arg "")
+      set(generated_pubkey ${ZEPHYR_BINARY_DIR}/autogen-pubkey.c)
+      set(keyinfo_check_command "")
+      message("MCUBoot bootloader key file: ${resolved_key_path}")
+      if(${resolved_key_path} IN_LIST mcuboot_default_signature_files)
+        message(WARNING "WARNING: Using default MCUboot signing key file, this file is for debug use only and is not secure!")
+      endif()
+    else()
+      set(name_suffix_arg "--name-suffix" "_${key_index}")
+      set(generated_pubkey ${ZEPHYR_BINARY_DIR}/autogen-pubkey-${key_index}.c)
+      set(keyinfo_check_command
+        COMMAND ${PYTHON_EXECUTABLE} ${MCUBOOT_DIR}/scripts/imgtool.py
+          keyinfo --key ${resolved_key_path} --require public
+      )
+      message("MCUBoot bootloader verification key file #${key_index}: ${resolved_key_path}")
+      if(${resolved_key_path} IN_LIST mcuboot_default_signature_files)
+        message(WARNING "WARNING: Using default MCUboot signing key file for verification key #${key_index}, this file is for debug use only and is not secure!")
+      endif()
+    endif()
+
+    add_custom_command(
+      OUTPUT ${generated_pubkey}
+      ${keyinfo_check_command}
+      COMMAND
+      ${PYTHON_EXECUTABLE}
+      ${MCUBOOT_DIR}/scripts/imgtool.py
+      getpub
+      -k
+      ${resolved_key_path}
+      ${name_suffix_arg}
+      > ${generated_pubkey}
+      DEPENDS ${resolved_key_path}
+    )
+    target_sources(app PRIVATE ${generated_pubkey})
+    math(EXPR key_index "${key_index} + 1")
+  endforeach()
+  target_compile_definitions(app PRIVATE MCUBOOT_SIGN_KEY_COUNT=${mcuboot_sign_key_count})
+elseif(CONFIG_BOOT_BUILTIN_KEY)
+  target_compile_definitions(app PRIVATE MCUBOOT_SIGN_KEY_COUNT=1)
 endif()
 
 if(CONFIG_BOOT_ENCRYPTION_KEY_FILE AND NOT CONFIG_BOOT_ENCRYPTION_KEY_FILE STREQUAL "")
@@ -476,62 +519,93 @@ function(dt_get_nvm_device node nvm_device)
   endwhile()
 endfunction()
 
-dt_nodelabel(slot0_flash NODELABEL "slot0_partition" REQUIRED)
-dt_prop(slot0_size PATH "${slot0_flash}" PROPERTY "reg" INDEX 1)
-dt_get_erase_write_block_sizes(${slot0_flash} erase_size_slot0 write_size_slot0)
+# Calculate erase/write sizes and provide definitions for them as well as calculating the maximum
+# sectors (if the feature is enabled)
+set(image 0)
+set(auto_min_sectors 0)
 
-if(CONFIG_BOOT_SWAP_USING_MOVE OR CONFIG_BOOT_SWAP_USING_OFFSET)
-  if(DEFINED erase_size_slot0)
-    zephyr_compile_definitions("MCUBOOT_SLOT0_EXPECTED_ERASE_SIZE=${erase_size_slot0}")
-  endif()
+while(${image} LESS ${CONFIG_UPDATEABLE_IMAGE_NUMBER})
+  set(slot1_flash)
+  set(slot1_size)
+  set(erase_size_slot1)
+  set(write_size_slot1)
+  math(EXPR primary_slot "${image} * 2")
 
-  if(DEFINED write_size_slot0)
-    zephyr_compile_definitions("MCUBOOT_SLOT0_EXPECTED_WRITE_SIZE=${write_size_slot0}")
-  endif()
-endif()
-
-if(NOT CONFIG_SINGLE_APPLICATION_SLOT AND NOT CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
-  dt_nodelabel(slot1_flash NODELABEL "slot1_partition" REQUIRED)
-  dt_prop(slot1_size PATH "${slot1_flash}" PROPERTY "reg" INDEX 1)
-  dt_get_erase_write_block_sizes(${slot0_flash} erase_size_slot1 write_size_slot1)
+  dt_nodelabel(slot0_flash NODELABEL "slot${primary_slot}_partition" REQUIRED)
+  dt_prop(slot0_size PATH "${slot0_flash}" PROPERTY "reg" INDEX 1)
+  dt_get_erase_write_block_sizes(${slot0_flash} erase_size_slot0 write_size_slot0)
 
   if(CONFIG_BOOT_SWAP_USING_MOVE OR CONFIG_BOOT_SWAP_USING_OFFSET)
-    if(DEFINED erase_size_slot1)
-      zephyr_compile_definitions("MCUBOOT_SLOT1_EXPECTED_ERASE_SIZE=${erase_size_slot1}")
+    if(DEFINED erase_size_slot0)
+      zephyr_compile_definitions("MCUBOOT_SLOT${primary_slot}_EXPECTED_ERASE_SIZE=${erase_size_slot0}")
     endif()
 
-    if(DEFINED write_size_slot1)
-      zephyr_compile_definitions("MCUBOOT_SLOT1_EXPECTED_WRITE_SIZE=${write_size_slot1}")
+    if(DEFINED write_size_slot0)
+      zephyr_compile_definitions("MCUBOOT_SLOT${primary_slot}_EXPECTED_WRITE_SIZE=${write_size_slot0}")
     endif()
   endif()
-endif()
 
-if(CONFIG_BOOT_MAX_IMG_SECTORS_AUTO)
-  if(NOT DEFINED slot0_size)
-    message(WARNING "Unable to determine size of slot0 partition, cannot calculate minimum sector usage")
-  elseif(NOT DEFINED erase_size_slot0)
-    message(WARNING "Unable to determine erase size of slot0 partition, cannot calculate minimum sector usage")
-  else()
-    math(EXPR slot_min_sectors "${slot0_size} / ${erase_size_slot0}")
+  if(CONFIG_BOOT_MAX_IMG_SECTORS_AUTO)
+    if(DEFINED slot0_size AND DEFINED erase_size_slot0)
+      math(EXPR slot_min_sectors "${slot0_size} / ${erase_size_slot0}")
+
+      if(${slot_min_sectors} GREATER ${auto_min_sectors})
+        set(auto_min_sectors ${slot_min_sectors})
+
+        if(${image} EQUAL 0)
+          set(image_0_min_sectors ${slot_min_sectors})
+        endif()
+      endif()
+    else()
+      message(WARNING "Unable to determine erase size/total size of slot${primary_slot} partition")
+    endif()
   endif()
 
   if(NOT CONFIG_SINGLE_APPLICATION_SLOT AND NOT CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
-    if(NOT DEFINED slot1_size)
-      message(WARNING "Unable to determine size of slot1 partition, cannot calculate minimum sector usage")
-    elseif(NOT DEFINED erase_size_slot1)
-      message(WARNING "Unable to determine erase size of slot1 partition, cannot calculate minimum sector usage")
-    else()
-      math(EXPR slot1_min_sectors "${slot1_size} / ${erase_size_slot1}")
+    set(slot1_flash)
+    set(slot1_size)
+    set(erase_size_slot1)
+    set(write_size_slot1)
+    math(EXPR secondary_slot "${primary_slot} + 1")
 
-      if("${slot1_min_sectors}" GREATER "${slot_min_sectors}")
-        set(slot_min_sectors ${slot1_min_sectors})
+    dt_nodelabel(slot1_flash NODELABEL "slot${secondary_slot}_partition" REQUIRED)
+    dt_prop(slot1_size PATH "${slot1_flash}" PROPERTY "reg" INDEX 1)
+    dt_get_erase_write_block_sizes(${slot1_flash} erase_size_slot1 write_size_slot1)
+
+    if(CONFIG_BOOT_SWAP_USING_MOVE OR CONFIG_BOOT_SWAP_USING_OFFSET)
+      if(DEFINED erase_size_slot1)
+        zephyr_compile_definitions("MCUBOOT_SLOT${secondary_slot}_EXPECTED_ERASE_SIZE=${erase_size_slot1}")
+      endif()
+
+      if(DEFINED write_size_slot1)
+        zephyr_compile_definitions("MCUBOOT_SLOT${secondary_slot}_EXPECTED_WRITE_SIZE=${write_size_slot1}")
+      endif()
+    endif()
+
+    if(CONFIG_BOOT_MAX_IMG_SECTORS_AUTO)
+      if(DEFINED slot1_size AND DEFINED erase_size_slot1)
+        math(EXPR slot_min_sectors "${slot1_size} / ${erase_size_slot1}")
+
+        if(${slot_min_sectors} GREATER ${auto_min_sectors})
+          set(auto_min_sectors ${slot_min_sectors})
+
+          if(${image} EQUAL 0)
+            set(image_0_min_sectors ${slot_min_sectors})
+          endif()
+        endif()
+      else()
+        message(WARNING "Unable to determine erase size/total size of slot${secondary_slot} partition")
       endif()
     endif()
   endif()
 
-  if(DEFINED slot_min_sectors AND "${slot_min_sectors}" GREATER "0")
-    zephyr_compile_definitions("MIN_SECTOR_COUNT=${slot_min_sectors}")
-    message("Calculated maximum number of sectors: ${slot_min_sectors}")
+  math(EXPR image "${image} + 1")
+endwhile()
+
+if(CONFIG_BOOT_MAX_IMG_SECTORS_AUTO)
+  if("${auto_min_sectors}" GREATER "0")
+    zephyr_compile_definitions("MIN_SECTOR_COUNT=${auto_min_sectors}")
+    message("Calculated maximum number of sectors: ${auto_min_sectors}")
   else()
     message(WARNING "Unable to calculate minimum number of sector sizes, falling back to 128 sector default. Please disable CONFIG_BOOT_MAX_IMG_SECTORS_AUTO and set CONFIG_BOOT_MAX_IMG_SECTORS to the required value")
   endif()
@@ -655,8 +729,8 @@ if(SYSBUILD)
     endif()
 
     if(CONFIG_BOOT_SWAP_USING_SCRATCH OR CONFIG_BOOT_SWAP_USING_MOVE)
-      if(CONFIG_BOOT_MAX_IMG_SECTORS_AUTO AND DEFINED slot_min_sectors AND "${slot_min_sectors}" GREATER "0")
-        math(EXPR boot_status_data_size "${slot_min_sectors} * (3 * ${write_size})")
+      if(CONFIG_BOOT_MAX_IMG_SECTORS_AUTO AND DEFINED image_0_min_sectors AND "${image_0_min_sectors}" GREATER "0")
+        math(EXPR boot_status_data_size "${image_0_min_sectors} * (3 * ${write_size})")
       else()
         if(CONFIG_BOOT_MAX_IMG_SECTORS)
           math(EXPR boot_status_data_size "${CONFIG_BOOT_MAX_IMG_SECTORS} * (3 * ${write_size})")
@@ -666,8 +740,8 @@ if(SYSBUILD)
         endif()
       endif()
     elseif(CONFIG_BOOT_SWAP_USING_OFFSET)
-      if(CONFIG_BOOT_MAX_IMG_SECTORS_AUTO AND DEFINED slot_min_sectors AND "${slot_min_sectors}" GREATER "0")
-        math(EXPR boot_status_data_size "${slot_min_sectors} * (2 * ${write_size})")
+      if(CONFIG_BOOT_MAX_IMG_SECTORS_AUTO AND DEFINED image_0_min_sectors AND "${image_0_min_sectors}" GREATER "0")
+        math(EXPR boot_status_data_size "${image_0_min_sectors} * (2 * ${write_size})")
       else()
         if(CONFIG_BOOT_MAX_IMG_SECTORS)
           math(EXPR boot_status_data_size "${CONFIG_BOOT_MAX_IMG_SECTORS} * (2 * ${write_size})")
