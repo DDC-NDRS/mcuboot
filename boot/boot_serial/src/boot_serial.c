@@ -275,7 +275,7 @@ bs_list_img_ver(char* dst, int maxlen, struct image_version* ver) {
                    (uint16_t)ver->iv_minor, ver->iv_revision);
 
     if ((ver->iv_build_num != 0) && (len > 0) && (len < maxlen)) {
-        snprintf(&dst[len], (maxlen - len), ".%u", ver->iv_build_num);
+        snprintf(&dst[len], (maxlen - len), ".%" PRIu32, ver->iv_build_num);
     }
 }
 #endif /* !MCUBOOT_USE_SNPRINTF */
@@ -775,18 +775,19 @@ bs_slot_info(uint8_t op, char *buf, int len)
                      * Check if we support uploading to this slot and if so, return the
                      * image ID
                      */
-#if defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
-                    ok = zcbor_tstr_put_lit(cbor_state, "upload_image_id") &&
-                         zcbor_uint32_put(cbor_state, (image_index + 1));
-#elif defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
+                    #if defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
                     ok = zcbor_tstr_put_lit(cbor_state, "upload_image_id") &&
                          zcbor_uint32_put(cbor_state, (image_index * 2 + slot + 1));
-#else
+                    #else
+                    #if !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
                     if (slot == 1) {
+                    #endif
                         ok = zcbor_tstr_put_lit(cbor_state, "upload_image_id") &&
-                             zcbor_uint32_put(cbor_state, (image_index * 2 + 1));
+                             zcbor_uint32_put(cbor_state, image_index);
+                    #if !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
                     }
-#endif
+                    #endif
+                    #endif
 
                     flash_area_close(fap);
 
@@ -1509,23 +1510,28 @@ boot_serial_output(void) {
  */
 static int
 boot_serial_in_dec(char* in, int inlen, char* out, int* out_off, int maxout) {
-    size_t rc;
+    int decoded_len;
     uint16_t crc;
     uint16_t len;
 
     #ifdef __ZEPHYR__
+    size_t rc;
     int err;
     err = base64_decode(&out[*out_off], maxout - *out_off, &rc, in, inlen - 2);
     if (err) {
         return -1;
     }
+    decoded_len = (int)rc;
     #elif __ESPRESSIF__
+    size_t rc;
     int err;
     err = base64_decode((unsigned char*)&out[*out_off], maxout - *out_off, &rc, (unsigned char*)in, inlen);
     if (err) {
         return -1;
     }
+    decoded_len = (int)rc;
     #else
+    int rc;
     if (*out_off + base64_decode_len(in) >= maxout) {
         return -1;
     }
@@ -1534,9 +1540,10 @@ boot_serial_in_dec(char* in, int inlen, char* out, int* out_off, int maxout) {
     if (rc < 0) {
         return -1;
     }
+    decoded_len = rc;
     #endif
 
-    *out_off += rc;
+    *out_off += decoded_len;
     if (*out_off <= sizeof(uint16_t)) {
         return 0;
     }
