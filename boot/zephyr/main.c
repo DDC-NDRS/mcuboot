@@ -184,6 +184,7 @@ int /**/main(void) {
     int rc;
     #if defined(CONFIG_BOOT_USB_DFU_GPIO) || defined(CONFIG_BOOT_USB_DFU_WAIT)
     bool usb_dfu_requested = false;
+    bool usb_dfu_forever = false;
     #endif
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
@@ -238,6 +239,7 @@ int /**/main(void) {
         BOOT_LOG_DBG("Entering USB DFU");
 
         usb_dfu_requested = true;
+        usb_dfu_forever = true;
 
         #ifdef CONFIG_MCUBOOT_INDICATION_LED
         io_led_set(1);
@@ -245,7 +247,9 @@ int /**/main(void) {
 
         mcuboot_status_change(MCUBOOT_STATUS_USB_DFU_ENTERED);
         }
-    #elif defined(CONFIG_BOOT_USB_DFU_WAIT)
+    #endif
+
+    #if defined(CONFIG_BOOT_USB_DFU_WAIT)
     usb_dfu_requested = true;
     #endif
 
@@ -258,16 +262,19 @@ int /**/main(void) {
         else {
             BOOT_LOG_INF("Waiting for USB DFU");
 
+            if (usb_dfu_forever) {
+                wait_for_usb_dfu(K_FOREVER);
+                BOOT_LOG_INF("USB DFU wait terminated");
             #if defined(CONFIG_BOOT_USB_DFU_WAIT)
-            BOOT_LOG_DBG("Waiting for USB DFU for %dms", CONFIG_BOOT_USB_DFU_WAIT_DELAY_MS);
-            mcuboot_status_change(MCUBOOT_STATUS_USB_DFU_WAITING);
-            wait_for_usb_dfu(K_MSEC(CONFIG_BOOT_USB_DFU_WAIT_DELAY_MS));
-            BOOT_LOG_INF("USB DFU wait time elapsed");
-            mcuboot_status_change(MCUBOOT_STATUS_USB_DFU_TIMED_OUT);
-            #else
-            wait_for_usb_dfu(K_FOREVER);
-            BOOT_LOG_INF("USB DFU wait terminated");
+            }
+            else {
+                BOOT_LOG_DBG("Waiting for USB DFU for %dms", CONFIG_BOOT_USB_DFU_WAIT_DELAY_MS);
+                mcuboot_status_change(MCUBOOT_STATUS_USB_DFU_WAITING);
+                wait_for_usb_dfu(K_MSEC(CONFIG_BOOT_USB_DFU_WAIT_DELAY_MS));
+                BOOT_LOG_INF("USB DFU wait time elapsed");
+                mcuboot_status_change(MCUBOOT_STATUS_USB_DFU_TIMED_OUT);
             #endif
+            }
         }
     }
     #endif

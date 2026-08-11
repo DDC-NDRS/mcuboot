@@ -16,7 +16,7 @@
 #include "bootutil/bootutil_public.h"
 #include "bootutil/fault_injection_hardening.h"
 
-BOOT_LOG_MODULE_DECLARE(serial_encryption);
+BOOT_LOG_MODULE_REGISTER(serial_encryption);
 
 fih_ret
 boot_image_validate_encrypted(struct boot_loader_state *state,
@@ -233,6 +233,9 @@ decrypt_image_inplace(const struct flash_area *fa_p,
 
     /* Get size from last sector to know page/sector erase size */
     rc = flash_area_get_sector(fa_p, boot_status_off(fa_p), &sector);
+    if (rc != 0) {
+        goto total_out;
+    }
 
     if(IS_ENCRYPTED(hdr)) {
 #if 0 //Skip this step?, the image will just not boot if it's not decrypted properly

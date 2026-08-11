@@ -50,6 +50,25 @@ extern "C" {
 
 struct flash_area;
 
+#if defined(MCUBOOT_LOGICAL_SECTOR_SIZE) && MCUBOOT_LOGICAL_SECTOR_SIZE != 0
+/* Logical sector offsets are rounded with ALIGN_DOWN(), and the Zephyr
+ * flash_area_get_sector() used when verification is disabled masks with
+ * ~(size - 1).  Both are only correct for a power of two.  The runtime
+ * verification in boot_verify_logical_sectors() steps linearly and would
+ * happily accept, say, a 48K sector tiling a bank of 16K pages, which the
+ * masking would then round to an offset that is not a sector boundary at
+ * all.  Reject such sizes at build time instead.
+ */
+_Static_assert((MCUBOOT_LOGICAL_SECTOR_SIZE &
+                (MCUBOOT_LOGICAL_SECTOR_SIZE - 1)) == 0,
+               "MCUBOOT_LOGICAL_SECTOR_SIZE must be a power of two");
+#endif
+
+#if defined(MCUBOOT_VERIFY_LOGICAL_SECTORS) && \
+    (!defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0)
+#error "MCUBOOT_VERIFY_LOGICAL_SECTORS requires a non-zero MCUBOOT_LOGICAL_SECTOR_SIZE"
+#endif
+
 #define BOOT_TMPBUF_SZ      256
 
 /** Number of image slots in flash; currently limited to two. */
@@ -221,7 +240,9 @@ struct boot_loader_state {
     struct {
         struct image_header hdr;
         const struct flash_area* area;
+        #if !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0
         boot_sector_t* sectors;
+        #endif
         uint32_t num_sectors;
         #if defined(MCUBOOT_SWAP_USING_OFFSET)
         uint16_t unprotected_tlv_size;
@@ -231,7 +252,9 @@ struct boot_loader_state {
     #if MCUBOOT_SWAP_USING_SCRATCH
     struct {
         const struct flash_area* area;
+        #if !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0
         boot_sector_t* sectors;
+        #endif
         uint32_t num_sectors;
     } scratch;
     #endif
@@ -465,6 +488,7 @@ boot_img_slot_off(struct boot_loader_state* state, size_t slot) {
     return flash_area_get_off(BOOT_IMG_AREA(state, slot));
 }
 
+#if !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0
 #ifndef MCUBOOT_USE_FLASH_AREA_GET_SECTORS
 
 static inline size_t
@@ -500,6 +524,30 @@ boot_img_sector_off(const struct boot_loader_state* state, size_t slot,
 }
 
 #endif /* !defined(MCUBOOT_USE_FLASH_AREA_GET_SECTORS) */
+#else
+static inline size_t
+boot_img_sector_size(const struct boot_loader_state* state,
+                     size_t slot, size_t sector) {
+    (void) state;
+    (void) slot;
+    (void) sector;
+
+    return MCUBOOT_LOGICAL_SECTOR_SIZE;
+}
+
+/*
+ * Offset of the sector from the beginning of the image, NOT the flash
+ * device.
+ */
+static inline uint32_t
+boot_img_sector_off(const struct boot_loader_state* state, size_t slot,
+                    size_t sector) {
+    (void) state;
+    (void) slot;
+
+    return MCUBOOT_LOGICAL_SECTOR_SIZE * sector;
+}
+#endif
 
 #ifdef MCUBOOT_RAM_LOAD
 #ifdef __BOOTSIM__

@@ -458,6 +458,7 @@ int boot_write_status(const struct boot_loader_state* state, struct boot_status*
 #endif /* !MCUBOOT_DIRECT_XIP */
 
 #if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
+#if !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || (MCUBOOT_LOGICAL_SECTOR_SIZE == 0)
 static fih_ret split_image_check(struct image_header* app_hdr,
                                  const struct flash_area* app_fap,
                                  struct image_header* loader_hdr,
@@ -486,6 +487,7 @@ static fih_ret split_image_check(struct image_header* app_hdr,
 out :
     FIH_RET(fih_rc);
 }
+#endif /* !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || (MCUBOOT_LOGICAL_SECTOR_SIZE == 0) */
 #endif /* !MCUBOOT_DIRECT_XIP && !MCUBOOT_RAM_LOAD */
 
 #if defined(MCUBOOT_DIRECT_XIP)
@@ -935,7 +937,9 @@ static int /**/boot_copy_image(struct boot_loader_state* state, struct boot_stat
     uint8_t image_index;
     int rc;
 
-    #if defined(MCUBOOT_OVERWRITE_ONLY_FAST)
+    #if defined(MCUBOOT_OVERWRITE_ONLY_FAST) || \
+        defined(MCUBOOT_SWAP_USING_MOVE)     || \
+        defined(MCUBOOT_SWAP_USING_OFFSET)
     uint32_t sector;
     uint32_t trailer_sz;
     uint32_t off;
@@ -944,7 +948,9 @@ static int /**/boot_copy_image(struct boot_loader_state* state, struct boot_stat
 
     (void) bs;
 
-    #if defined(MCUBOOT_OVERWRITE_ONLY_FAST)
+    #if defined(MCUBOOT_OVERWRITE_ONLY_FAST) || \
+        defined(MCUBOOT_SWAP_USING_MOVE)     || \
+        defined(MCUBOOT_SWAP_USING_OFFSET)
     uint32_t src_size = 0;
     rc = boot_read_image_size(state, BOOT_SLOT_SECONDARY, &src_size);
     assert(rc == 0);
@@ -967,7 +973,9 @@ static int /**/boot_copy_image(struct boot_loader_state* state, struct boot_stat
         rc = boot_erase_region(fap_primary_slot, size, this_size, false);
         assert(rc == 0);
 
-        #if defined(MCUBOOT_OVERWRITE_ONLY_FAST)
+        #if defined(MCUBOOT_OVERWRITE_ONLY_FAST) || \
+            defined(MCUBOOT_SWAP_USING_MOVE)     || \
+            defined(MCUBOOT_SWAP_USING_OFFSET)
         if ((size + this_size) >= src_size) {
             size += src_size - size;
             size += BOOT_WRITE_SZ(state) - (size % BOOT_WRITE_SZ(state));
@@ -978,28 +986,9 @@ static int /**/boot_copy_image(struct boot_loader_state* state, struct boot_stat
         size += this_size;
     }
 
-    #if defined(MCUBOOT_SWAP_USING_MOVE)
-    /* When using MCUBOOT_SWAP_USING_MOVE, primary region is larger then the secondary region
-     * Optimal region configuration: # useful regions in primary region = # regions in secondary region + 1
-     * This means that we have to use the size of the secondary region (so without the swap sector)
-     */
-    sect_count = boot_img_num_sectors(state, BOOT_SLOT_SECONDARY);
-    for (sect = 0, size = 0; sect < sect_count; sect++) {
-        this_size = boot_img_sector_size(state, BOOT_SLOT_SECONDARY, sect);
-
-        #if defined(MCUBOOT_OVERWRITE_ONLY_FAST)
-        if ((size + this_size) >= src_size) {
-            size += src_size - size;
-            size += BOOT_WRITE_SZ(state) - (size % BOOT_WRITE_SZ(state));
-            break;
-        }
-        #endif
-
-        size += this_size;
-    }
-    #endif
-
-    #if defined(MCUBOOT_OVERWRITE_ONLY_FAST)
+    #if defined(MCUBOOT_OVERWRITE_ONLY_FAST) || \
+        defined(MCUBOOT_SWAP_USING_MOVE)     || \
+        defined(MCUBOOT_SWAP_USING_OFFSET)
     trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
     sector = boot_img_num_sectors(state, BOOT_SLOT_PRIMARY) - 1;
     sz = 0;
@@ -1043,7 +1032,9 @@ static int /**/boot_copy_image(struct boot_loader_state* state, struct boot_stat
         return (rc);
     }
 
-    #if defined(MCUBOOT_OVERWRITE_ONLY_FAST)
+    #if defined(MCUBOOT_OVERWRITE_ONLY_FAST) || \
+        defined(MCUBOOT_SWAP_USING_MOVE)     || \
+        defined(MCUBOOT_SWAP_USING_OFFSET)
     rc = boot_write_magic(fap_primary_slot);                    /* MCUBOOT_SEQ12 */
     if (rc != 0) {
         return (rc);
@@ -1069,7 +1060,9 @@ static int /**/boot_copy_image(struct boot_loader_state* state, struct boot_stat
     }
     #endif /* MCUBOOT_HW_ROLLBACK_PROT */
 
-#ifndef MCUBOOT_OVERWRITE_ONLY_KEEP_BACKUP
+    #if !defined(MCUBOOT_OVERWRITE_ONLY_KEEP_BACKUP) && \
+        !defined(MCUBOOT_SWAP_USING_MOVE)            && \
+        !defined(MCUBOOT_SWAP_USING_OFFSET)
     /*
      * Erases header and trailer. The trailer is erased because when a new
      * image is written without a trailer as is the case when using newt, the
@@ -1080,7 +1073,7 @@ static int /**/boot_copy_image(struct boot_loader_state* state, struct boot_stat
                               boot_img_sector_off(state, BOOT_SLOT_SECONDARY, 0),
                               boot_img_sector_size(state, BOOT_SLOT_SECONDARY, 0), false);
     assert(rc == 0);
-#endif
+    #endif
 
     last_sector = boot_img_num_sectors(state, BOOT_SLOT_SECONDARY) - 1;
     BOOT_LOG_DBG("erasing secondary trailer");
@@ -1715,10 +1708,12 @@ fih_ret /**/context_boot_go(struct boot_loader_state* state, struct boot_rsp* rs
 
     BOOT_LOG_DBG("context_boot_go");
 
+    #if !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || (MCUBOOT_LOGICAL_SECTOR_SIZE == 0)
     #if defined(__BOOTSIM__)
     struct boot_sector_buffer sector_buf;
     sectors = &sector_buf;
     #endif
+    #endif /* !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || (MCUBOOT_LOGICAL_SECTOR_SIZE == 0) */
 
     has_upgrade = false;
 
@@ -1981,6 +1976,7 @@ out :
     FIH_RET(fih_rc);
 }
 
+#if !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || (MCUBOOT_LOGICAL_SECTOR_SIZE == 0)
 fih_ret split_go(int loader_slot, int split_slot, void** entry) {
     struct boot_sector_buffer *sectors;
     uintptr_t entry_val;
@@ -2044,6 +2040,7 @@ done:
 
     FIH_RET(fih_rc);
 }
+#endif /* !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || (MCUBOOT_LOGICAL_SECTOR_SIZE == 0) */
 
 #else /* MCUBOOT_DIRECT_XIP || MCUBOOT_RAM_LOAD */
 

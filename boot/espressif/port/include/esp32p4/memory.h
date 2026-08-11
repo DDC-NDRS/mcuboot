@@ -6,16 +6,17 @@
 
 #pragma once
 
-/* Default memory layout for ESP32-C61 bootloader */
+/* Default memory layout for ESP32-P4 bootloader (rev >= 3.0) */
 
 /* Note: this and subsequent addresses calculations keep retrocompatibility
  * for standalone builds of Espressif Port.
  * For builds integrated with the RTOS (e.g. Zephyr), they must provide their
  * `memory.h` which must set the proper bootloader and application boundaries.
  *
- * Derived from IDF bootloader.ld.in: bootloader_usable_dram_end = 0x4084ca70,
- * stack overhead 0x2000. */
-#define BOOTLOADER_RAM_END                  0x4084AA70
+ * Derived from IDF bootloader.rev3.ld.in:
+ *   bootloader_usable_dram_end = 0x4ffbcfc0 - 0x2000
+ */
+#define BOOTLOADER_RAM_END                  0x4FFBAFC0
 
 #define BOOTLOADER_IRAM_LOADER_SEG_LEN      0x2400
 #define BOOTLOADER_IRAM_LOADER_SEG_START \

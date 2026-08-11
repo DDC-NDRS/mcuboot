@@ -1050,38 +1050,25 @@ config MCUBOOT_LOG_THREAD_STACK_SIZE
 	help
 	  Set the internal stack size for MCUBoot log processing thread.
 
-menu "USB DFU"
-
-choice BOOT_USB_DFU
-	prompt "USB DFU"
-	default BOOT_USB_DFU_NO
-
-config BOOT_USB_DFU_NO
-	prompt "Disabled"
-
-config BOOT_USB_DFU_WAIT
-	bool "Wait for a prescribed duration to see if USB DFU is invoked"
+menuconfig BOOT_USB_DFU
+	bool "USB DFU"
 	select USB_DEVICE_STACK
 	select USB_DFU_CLASS
 	select IMG_MANAGER
 	select STREAM_FLASH
 	select MULTITHREADING
+	help
+	  If y, enable USB DFU support in the bootloader. Select one or more of
+	  the entrance methods below to control when USB DFU mode is entered.
+
+if BOOT_USB_DFU
+
+config BOOT_USB_DFU_WAIT
+	bool "Wait for a prescribed duration to see if USB DFU is invoked"
 	help
 	  If y, MCUboot waits for a prescribed duration of time to allow
 	  for USB DFU to be invoked. Please note DFU always updates the
 	  slot1 image.
-
-config BOOT_USB_DFU_GPIO
-	bool "Use GPIO to detect whether to trigger DFU mode"
-	select USB_DEVICE_STACK
-	select USB_DFU_CLASS
-	select IMG_MANAGER
-	select STREAM_FLASH
-	select MULTITHREADING
-	help
-	  If y, MCUboot uses GPIO to detect whether to invoke USB DFU.
-
-endchoice
 
 config BOOT_USB_DFU_WAIT_DELAY_MS
 	int "USB DFU wait duration"
@@ -1090,33 +1077,34 @@ config BOOT_USB_DFU_WAIT_DELAY_MS
 	help
 	  Milliseconds to wait for USB DFU to be invoked.
 
-if BOOT_USB_DFU_GPIO
+config BOOT_USB_DFU_GPIO
+	bool "Use GPIO to detect whether to trigger DFU mode"
+	help
+	  If y, MCUboot uses GPIO to detect whether to invoke USB DFU.
 
 config BOOT_USB_DFU_DETECT_DELAY
 	int "Serial detect pin detection delay time [ms]"
+	depends on BOOT_USB_DFU_GPIO
 	default 0
 	help
 	  Used to prevent the bootloader from loading on button press.
 	  Useful for powering on when using the same button as
 	  the one used to place the device in bootloader mode.
 
-endif # BOOT_USB_DFU_GPIO
-
 config BOOT_USB_DFU_NO_APPLICATION
 	bool "Stay in bootloader if no application"
-	depends on !BOOT_USB_DFU_NO
 	help
 	  Allows for entering USB DFU recovery mode if there is no bootable
 	  application that the bootloader can jump to.
 
-endmenu
+endif # BOOT_USB_DFU
 
 rsource "Kconfig.serial_recovery"
 
 config MCUBOOT_INDICATION_LED
 	bool "Turns on LED indication when device is in DFU"
 	select GPIO
-	depends on MCUBOOT_SERIAL || !BOOT_USB_DFU_NO
+	depends on MCUBOOT_SERIAL || BOOT_USB_DFU
 	help
 	  Device device activates the LED while in bootloader mode.
 	  mcuboot-led0 alias must be set in the device's .dts
@@ -1460,6 +1448,29 @@ config MCUBOOT_VERIFY_IMG_ADDRESS
 	  also be useful when BOOT_DIRECT_XIP is enabled, to ensure that the image
 	  linked at the correct address is loaded.
 
+config MCUBOOT_LOGICAL_SECTOR_SIZE
+	hex "Size of a logical sector [EXPERIMENTAL]"
+	default 0x0
+	help
+	  Set to 0x0 to use hardware sectors. Any other value here should be aligned to hardware
+	  sectors in size and alignment, and must be a power of two. A build time assertion
+	  rejects sizes that are not, as offsets are rounded by masking rather than by division.
+
+config MCUBOOT_VERIFY_LOGICAL_SECTORS
+	bool "Validate logical sector layout"
+	depends on MCUBOOT_LOGICAL_SECTOR_SIZE != 0x0
+	help
+	  Validation of logical sector size against hardware constraints. Should be used to
+	  validate compile-time configuration against run-time system.
+
+config MCUBOOT_LOGICAL_SECTOR_SIZE_EXPERIMENTAL
+	bool
+	default y if MCUBOOT_LOGICAL_SECTOR_SIZE != 0x0
+	select EXPERIMENTAL
+	help
+	  Indicates that MCUboot's logical sector size feature has been enabled, this feature
+	  is currently experimental.
+
 config MCUBOOT_DEVICE_SETTINGS
 	# Hidden selector for device-specific settings
 	bool
@@ -1467,7 +1478,7 @@ config MCUBOOT_DEVICE_SETTINGS
 	# CPU options
 	select MCUBOOT_DEVICE_CPU_CORTEX_M0 if CPU_CORTEX_M0
 	# Enable flash page layout if available
-	select FLASH_PAGE_LAYOUT if FLASH_HAS_PAGE_LAYOUT
+	select FLASH_PAGE_LAYOUT if FLASH_HAS_PAGE_LAYOUT && (MCUBOOT_LOGICAL_SECTOR_SIZE = 0x0 || MCUBOOT_VERIFY_LOGICAL_SECTORS)
 	# Enable flash_map module as flash I/O back-end
 	select FLASH_MAP
 

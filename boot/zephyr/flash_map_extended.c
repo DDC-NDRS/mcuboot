@@ -21,6 +21,12 @@
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 
+#if CONFIG_MCUBOOT_LOGICAL_SECTOR_SIZE != 0
+BUILD_ASSERT((CONFIG_MCUBOOT_LOGICAL_SECTOR_SIZE &
+              (CONFIG_MCUBOOT_LOGICAL_SECTOR_SIZE - 1)) == 0,
+             "CONFIG_MCUBOOT_LOGICAL_SECTOR_SIZE must be a power of two");
+#endif
+
 #define FLASH_PARTITION_ADDRESS(partition) (PARTITION_ADDRESS(partition) - PARTITION_OFFSET(partition))
 
 #define FLASH_PARTITION_DEV_UNIQUE(n, m) (PARTITION_EXISTS(n) && \
@@ -319,17 +325,19 @@ uint8_t flash_area_get_device_id(const struct flash_area* fa) {
 #define ERASED_VAL 0xFF
 
 __weak uint8_t flash_area_erased_val(const struct flash_area* fap) {
-    (void)fap;
-    return ERASED_VAL;
+    (void) fap;
+    return (ERASED_VAL);
 }
 
+#if ((CONFIG_MCUBOOT_LOGICAL_SECTOR_SIZE == 0) || \
+     defined(CONFIG_MCUBOOT_VERIFY_LOGICAL_SECTORS))
 int flash_area_get_sector(const struct flash_area* fap, off_t off,
                           struct flash_sector* fsp) {
     struct flash_pages_info fpi;
     int rc;
 
     if ((off < 0) || ((size_t)off >= fap->fa_size)) {
-        return -ERANGE;
+        return (-ERANGE);
     }
 
     rc = flash_get_page_info_by_offs(fap->fa_dev, fap->fa_off + off, &fpi);
@@ -338,5 +346,20 @@ int flash_area_get_sector(const struct flash_area* fap, off_t off,
         fsp->fs_size = fpi.size;
     }
 
-    return rc;
+    return (rc);
 }
+#else
+int flash_area_get_sector(const struct flash_area* fap, off_t off,
+                          struct flash_sector* fsp) {
+    if ((off < 0) || ((size_t)off >= flash_area_get_size(fap))) {
+        BOOT_LOG_ERR("flash_area_get_sector: off %ld out of area %p",
+                     (long)off, fap);
+        return (-ERANGE);
+    }
+
+    fsp->fs_off  = off & ~(CONFIG_MCUBOOT_LOGICAL_SECTOR_SIZE - 1);
+    fsp->fs_size = CONFIG_MCUBOOT_LOGICAL_SECTOR_SIZE;
+
+    return (0);
+}
+#endif
