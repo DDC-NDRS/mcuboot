@@ -168,6 +168,15 @@ const struct boot_uart_funcs* boot_uf;
 static struct nmgr_hdr* bs_hdr;
 static bool bs_entry;
 
+#ifdef MCUBOOT_SERIAL_INACTIVITY_TIMEOUT
+/* Restart value and progress flags for the inactivity countdown, at file
+ * scope because the command handler observes progress, not the read loop.
+ */
+static int bs_rearm_ms;
+static bool bs_rearm_pending;
+static bool bs_rearm_seen;
+#endif
+
 static char bs_obuf[BOOT_SERIAL_OUT_MAX];
 
 static void boot_serial_output(void);
@@ -972,6 +981,11 @@ bs_upload(char* buf, int len) {
     }
 
     #if !defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
+    if (img_num > BOOT_IMAGE_NUMBER) {
+        rc = MGMT_ERR_ENOENT;
+        goto out;
+    }
+
     rc = flash_area_open(flash_area_id_from_multi_image_slot(img_num, 0), &fap);
     #else
     rc = flash_area_open(flash_area_id_from_direct_image(img_num), &fap);
@@ -986,11 +1000,6 @@ bs_upload(char* buf, int len) {
          * means that upload has started from beginning.
          */
         const size_t area_size = flash_area_get_size(fap);
-
-        #if defined(MCUBOOT_SWAP_USING_OFFSET) && defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
-        uint32_t num_sectors = SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN;
-        struct flash_sector sector_data;
-        #endif
 
         curr_off = 0;
         #if defined(MCUBOOT_ERASE_PROGRESSIVELY) && defined(BOOT_IMAGE_HAS_STATUS_FIELDS)
@@ -1036,15 +1045,26 @@ bs_upload(char* buf, int len) {
         #if defined(MCUBOOT_SWAP_USING_OFFSET) && defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
         if (img_num > 0 &&
             (img_num % BOOT_NUM_SLOTS) == BOOT_DIRECT_UPLOAD_SECONDARY_SLOT_ID_REMAINDER) {
+            #if defined(MCUBOOT_LOGICAL_SECTOR_SIZE) && MCUBOOT_LOGICAL_SECTOR_SIZE != 0
+            /* The swap algorithms position slots by logical sectors, so the image
+             * in the secondary slot starts one logical sector in; the physical
+             * sector reported by the flash driver may be smaller.
+             */
+            start_off = MCUBOOT_LOGICAL_SECTOR_SIZE;
+            #else
+            uint32_t num_sectors = SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN;
+            struct flash_sector sector_data;
+
             rc = flash_area_get_sectors(fap->fa_id, &num_sectors, &sector_data);
 
-            if ((rc != 0 && rc != -ENOMEM) ||
+            if (((rc != 0) && (rc != -ENOMEM)) ||
                 num_sectors != SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN) {
                 rc = MGMT_ERR_ENOENT;
                 goto out;
             }
 
             start_off = sector_data.fs_size;
+            #endif
         }
         else {
             start_off = 0;
@@ -1200,20 +1220,22 @@ out:
 
     boot_serial_output();
 
-#ifdef MCUBOOT_ENC_IMAGES
+    #ifdef MCUBOOT_ENC_IMAGES
+    if ((rc == 0) && (fap != NULL)) {
     /* Check if this upload was for the primary slot */
-#if !defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
-    if (flash_area_id_from_multi_image_slot(img_num, 0) == FLASH_AREA_IMAGE_PRIMARY(0))
-#else
-    if (flash_area_id_from_direct_image(img_num) == FLASH_AREA_IMAGE_PRIMARY(0))
-#endif
-    {
-        if (curr_off == img_size) {
-            /* Last sector received, now start a decryption on the image if it is encrypted */
-            rc = boot_handle_enc_fw(fap);
+        #if !defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
+        if ((img_num <= BOOT_IMAGE_NUMBER) &&
+            (flash_area_id_from_multi_image_slot(img_num, 0) == FLASH_AREA_IMAGE_PRIMARY(0))) {
+        #else
+        if (flash_area_id_from_direct_image(img_num) == FLASH_AREA_IMAGE_PRIMARY(0)) {
+        #endif
+            if (curr_off == img_size) {
+                /* Last sector received, now start a decryption on the image if it is encrypted */
+                rc = boot_handle_enc_fw(fap);
+            }
         }
     }
-#endif
+    #endif
 
     flash_area_close(fap);
 }
@@ -1416,7 +1438,18 @@ void boot_serial_input(char* buf, int len) {
     }
 
     #ifdef MCUBOOT_SERIAL_WAIT_FOR_DFU
-    bs_entry = true;
+    #ifdef MCUBOOT_SERIAL_INACTIVITY_TIMEOUT
+    if (bs_rearm_ms > 0) {
+        /* Restart the countdown: the loop should end on silence, not on a
+         * finished transfer.
+         */
+        bs_rearm_pending = true;
+        bs_rearm_seen = true;
+    } else
+    #endif
+    {
+        bs_entry = true;
+    }
     #endif
 }
 
@@ -1628,6 +1661,13 @@ boot_serial_read_console(const struct boot_uart_funcs* f, int timeout_in_ms) {
     int full_line;
     int max_input;
     int elapsed_in_ms = 0;
+    #ifdef MCUBOOT_SERIAL_WAIT_FOR_DFU
+    /* Start of the iteration charged against the timeout; rolled forward at
+     * the loop's end so every ms in the loop counts, not just f->read().
+     */
+    uint32_t start = k_uptime_get_32();
+    uint32_t now;
+    #endif
     #ifdef MCUBOOT_SERIAL_RAW_PROTOCOL_INPUT_TIMEOUT
     uint32_t raw_input_start = 0;
     #endif
@@ -1662,10 +1702,6 @@ boot_serial_read_console(const struct boot_uart_funcs* f, int timeout_in_ms) {
         #endif
 
         MCUBOOT_WATCHDOG_FEED();
-
-        #ifdef MCUBOOT_SERIAL_WAIT_FOR_DFU
-        uint32_t start = k_uptime_get_32();
-        #endif
 
         rc = f->read(in_buf + off, sizeof(in_buf) - off, &full_line);
         if (rc <= 0 && !full_line) {
@@ -1730,9 +1766,18 @@ check_timeout :
 
         /* Subtract elapsed time */
         #ifdef MCUBOOT_SERIAL_WAIT_FOR_DFU
-        elapsed_in_ms = (k_uptime_get_32() - start);
+        now = k_uptime_get_32();
+        elapsed_in_ms = (int)(now - start);
+        start = now;
         #endif
         timeout_in_ms -= elapsed_in_ms;
+
+        #ifdef MCUBOOT_SERIAL_INACTIVITY_TIMEOUT
+        if (bs_rearm_pending) {
+            bs_rearm_pending = false;
+            timeout_in_ms = bs_rearm_ms;
+        }
+        #endif
     }
 }
 
@@ -1742,6 +1787,10 @@ check_timeout :
  */
 void
 boot_serial_start(const struct boot_uart_funcs* f) {
+    #ifdef MCUBOOT_SERIAL_INACTIVITY_TIMEOUT
+    bs_rearm_ms = 0;
+    #endif
+
     bs_entry = true;
     boot_serial_read_console(f, 0);
 }
@@ -1754,9 +1803,32 @@ boot_serial_start(const struct boot_uart_funcs* f) {
  */
 void
 boot_serial_check_start(const struct boot_uart_funcs* f, int timeout_in_ms) {
+    #ifdef MCUBOOT_SERIAL_INACTIVITY_TIMEOUT
+    bs_rearm_ms = 0;
+    #endif
+
     bs_entry = false;
     boot_serial_read_console(f, timeout_in_ms);
 }
+
+#ifdef MCUBOOT_SERIAL_INACTIVITY_TIMEOUT
+/*
+ * Returns once timeout_in_ms pass without an MCUmgr command; each command
+ * restarts the countdown with rearm_in_ms. Return value tells an aborted
+ * session apart from a window that simply expired.
+ */
+bool
+boot_serial_start_inactivity(const struct boot_uart_funcs* f, int timeout_in_ms,
+                             int rearm_in_ms) {
+    bs_rearm_ms = rearm_in_ms;
+    bs_rearm_pending = false;
+    bs_rearm_seen = false;
+    bs_entry = false;
+    boot_serial_read_console(f,timeout_in_ms);
+
+    return (bs_rearm_seen);
+}
+#endif
 #endif
 
 #ifdef MCUBOOT_SERIAL_IMG_GRP_HASH

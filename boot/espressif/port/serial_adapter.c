@@ -232,7 +232,7 @@ int boot_console_init(void)
     esp_rom_uart_tx_wait_idle(0);
 #else
     int __DECLARE_RCC_ATOMIC_ENV __attribute__ ((unused)); // To avoid build errors/warnings about __DECLARE_RCC_ATOMIC_ENV
-    
+
     /* Enable GPIO for UART RX */
     esp_rom_gpio_pad_select_gpio(SERIAL_BOOT_GPIO_RX);
     esp_rom_gpio_connect_in_signal(SERIAL_BOOT_GPIO_RX,
@@ -266,7 +266,7 @@ int boot_console_init(void)
     uart_ll_reset_register(SERIAL_BOOT_UART_NUM);
     uart_ll_enable_bus_clock(SERIAL_BOOT_UART_NUM, true);
     uart_ll_sclk_enable(serial_boot_uart_dev);
-    
+
     uart_ll_set_baudrate(serial_boot_uart_dev, SERIAL_BOOT_BAUDRATE, clock_hz);
 
     uart_ll_txfifo_rst(serial_boot_uart_dev);
