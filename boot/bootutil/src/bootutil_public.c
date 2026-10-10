@@ -765,6 +765,7 @@ int boot_image_load_header(const struct flash_area* fa_p, struct image_header* h
     return (0);
 }
 
+__attribute__((weak))
 void mcuboot_assert_handler(const char *file, int line, const char *func) {
     BOOT_LOG_ERR("assertion failed: file \"%s\", line %d, func: %s\n", file, line, func);
     abort();
