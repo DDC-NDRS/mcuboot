@@ -212,7 +212,7 @@ bootutil_img_validate(struct boot_loader_state* state,
     uint16_t len;
     uint16_t type;
     uint32_t img_sz;
-#ifdef EXPECTED_SIG_TLV
+    #ifdef EXPECTED_SIG_TLV
     FIH_DECLARE(valid_signature, FIH_FAILURE);
     #ifndef MCUBOOT_BUILTIN_KEY
     int key_id = -1;
@@ -256,6 +256,14 @@ bootutil_img_validate(struct boot_loader_state* state,
     #endif
 
     BOOT_LOG_DBG("bootutil_img_validate: flash area %p", fap);
+
+    bool is_valid =
+        bootutil_image_hdr_sizes_valid(hdr, fap,
+                                       (state == NULL) ? 0 : BOOT_CURR_IMG(state));
+    if (!is_valid) {
+        rc = -1;
+        goto out;
+    }
 
     #if defined(EXPECTED_HASH_TLV) && !defined(MCUBOOT_SIGN_PURE)
     rc = bootutil_img_hash(state, hdr, fap, tmp_buf, tmp_buf_sz, hash, seed, seed_len);
