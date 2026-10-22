@@ -1730,11 +1730,6 @@ bool boot_check_for_updates(void) {
      * completed.
      */
     IMAGES_ITER(BOOT_CURR_IMG(&boot_data)) {
-        #if (BOOT_IMAGE_NUMBER > 1)
-        if (state->img_mask[BOOT_CURR_IMG(&boot_data)]) {
-            continue;
-        }
-        #endif
 
         /* Determine the sector layout of the image slots and scratch area. */
         rc = boot_read_sectors(&boot_data, sectors);
@@ -2498,6 +2493,10 @@ static int boot_update_hw_rollback_protection(struct boot_loader_state* state) {
 fih_ret context_boot_go(struct boot_loader_state* state, struct boot_rsp* rsp) {
     int rc;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
+
+    #if defined(MCUBOOT_RAM_LOAD) && defined(MCUBOOT_SERIAL)
+    boot_init_image_data_in_ram();
+    #endif
 
     rc = boot_open_all_flash_areas(state);
     if (rc != 0) {
